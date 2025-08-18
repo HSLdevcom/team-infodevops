@@ -7,9 +7,7 @@ Then we link to the documentation stored elsewhere.
 
 ## Team practices
 
-- Onboarding
-  - Accounts and authorization
-  - Domain knowledge basics
+- [Onboarding](./docs/onboarding.md)
 - Development process
   - Version control
     - Branching
