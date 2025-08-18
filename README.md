@@ -9,6 +9,7 @@ Then we link to the documentation stored elsewhere.
 
 - [Onboarding](./docs/onboarding.md)
 - Development process
+  - [Architectural principles](docs/architectural-principles.md)
   - Version control
     - Branching
   - Testing
