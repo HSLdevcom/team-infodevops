@@ -68,6 +68,8 @@ More information in the [Transitlog documentation repository](https://github.com
 
 Services related to maps and printing and managing materials, posters and signs at stops.
 
+More information in the [Map production services](https://github.com/HSLdevcom/hsl-map-documentation) repository.
+
 ### hfp-analytics
 
 Data analysis based on High-frequency positioning (HFP).
