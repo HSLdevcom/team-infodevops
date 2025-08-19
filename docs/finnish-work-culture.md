@@ -21,7 +21,7 @@ We only mean to describe general differences and not to judge them.
 
 ### Results
 
-[!The Inglehart-Welzel World Cultural Map - World Values Survey 7 (2023)](../images/inglehart-welzel-world-cultural-map-2023-fair-use-under-educational-purposes.png)
+![The Inglehart-Welzel World Cultural Map - World Values Survey 7 (2023)](../images/inglehart-welzel-world-cultural-map-2023-fair-use-under-educational-purposes.png)
 *Figure 1: The Inglehart-Welzel World Cultural Map - World Values Survey 7 (2023)[[1]](#ref1)*
 
 - x-axis: Survival vs. self-expression values
@@ -73,7 +73,7 @@ We only mean to describe general differences and not to judge them.
 
 ### Results
 
-[!Poststratified estimates of overall levels of political trust by region: Posterior medians and 95% credible intervals](../images/kolczynska_et_al_2024_fig_2.png)
+![Poststratified estimates of overall levels of political trust by region: Posterior medians and 95% credible intervals](../images/kolczynska_et_al_2024_fig_2.png)
 *Figure 2: Poststratified estimates of overall levels of political trust by region: Posterior medians and 95% credible intervals[[2]](#ref2)*
 
 ### Interpretations for Finland
@@ -95,16 +95,16 @@ We only mean to describe general differences and not to judge them.
 
 ### Results
 
-[!Most people can be trusted or you can't be too careful](../images/ess_2023_most_people_can_be_trusted.png)
+![Most people can be trusted or you can't be too careful](../images/ess_2023_most_people_can_be_trusted.png)
 *Figure 3: Finland: Most people can be trusted[[3]](#ref3)*
 
-[!Most people try to take advantage of you, or try to be fair](../images/ess_2023_most_people_try_to_be_fair.png)
+![Most people try to take advantage of you, or try to be fair](../images/ess_2023_most_people_try_to_be_fair.png)
 *Figure 4: Finland: Most people try to be fair[[3]](#ref3)*
 
-[!Important to get respect from others](../images/ess_2023_not_important_to_get_respect_from_others.png)
+![Important to get respect from others](../images/ess_2023_not_important_to_get_respect_from_others.png)
 *Figure 5: Finland: Not like me to think that it is important to get respect from others[[3]](#ref3)*
 
-[!Important to show abilities and be admired](../images/ess_2023_not_important_to_show_abilities_and_be_admired.png)
+![Important to show abilities and be admired](../images/ess_2023_not_important_to_show_abilities_and_be_admired.png)
 *Figure 6: Finland: Not like me to think that it is important to show abilities and be admired[[3]](#ref3)*
 
 ### Interpretations for Finland
