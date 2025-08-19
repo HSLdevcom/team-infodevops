@@ -21,6 +21,10 @@ Provide the product owner (PO) your work email address.
 The PO will get you started with your accounts and access.
 Once you have access, you can read more about it here: <https://dev.azure.com/hslfi/Team%20InfoDevOps/_wiki/wikis/Team-InfoDevOps.wiki/7377/Onboarding>
 
+## Finnish work culture
+
+If you have not worked with Finns before, you might wish to read about the [Finnish work culture](./finnish-work-culture.md) first.
+
 ## First immersion
 
 While we are working on our onboarding documentation, another team has written some great information on their wiki, for example a glossary of public transport terminology in Finnish and English: <https://github.com/HSLdevcom/jore4/wiki/Glossary>

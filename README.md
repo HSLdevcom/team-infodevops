@@ -8,6 +8,7 @@ Then we link to the documentation stored elsewhere.
 ## Team practices
 
 - [Onboarding](./docs/onboarding.md)
+  - [Finnish work culture](./docs/finnish-work-culture.md)
 - Development process
   - [Architectural principles](docs/architectural-principles.md)
   - Version control
@@ -77,3 +78,9 @@ A UI for the HELMET model built with EMME.
 ### jore-map-ui
 
 A map interface for Jore3.
+
+## License
+
+The license for our content is CC0 1.0 as mentioned in `./LICENSE`.
+However, that does not cover material made by others which are made available here under fair use.
+The license of such material has been separately marked.
