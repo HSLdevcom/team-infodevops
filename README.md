@@ -9,6 +9,7 @@ Then we link to the documentation stored elsewhere.
 
 - [Onboarding](./docs/onboarding.md)
   - [Finnish work culture](./docs/finnish-work-culture.md)
+  - [Public transport domain](./docs/public-transport-domain.md)
 - Development process
   - [Architectural principles](docs/architectural-principles.md)
   - Version control
