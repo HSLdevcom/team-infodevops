@@ -17,7 +17,7 @@ Privacy and GDPR has to be taken into account, as well.
 
 ## Access to services
 
-Provide the product owner (PO) your work email address.
+Provide the product owner (PO) your work email address and GitHub user name.
 The PO will get you started with your accounts and access.
 Once you have access, you can read more about it here: <https://dev.azure.com/hslfi/Team%20InfoDevOps/_wiki/wikis/Team-InfoDevOps.wiki/7377/Onboarding>
 
