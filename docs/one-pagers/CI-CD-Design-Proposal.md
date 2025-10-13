@@ -57,7 +57,6 @@ In `ci.yml` we will have the following stages:
   with:
   distribution: 'temurin'
   java-version: '21'
-
 ```
 
 #### 1.2. Check code formatting & linting
@@ -76,24 +75,59 @@ In `ci.yml` we will have the following stages:
 #### 1.4. Build artifact
 ```
 - name: Build artifact
-  run: mvn package -DskipTests
+  run: mvn package -Dmaven.test.skip
 ```
 
 #### 1.5. Build Docker Image
 ```
 - name: Build Docker image
-  run: docker build -t ghcr.io/org/myservice:${{ github.sha }} .
+  run: docker build -t ghcr.io/org/${{ github.repository }}:${{ github.sha }} .
 ```
 
 In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
 
-#### 1.6. Push Docker image
+### 1.6. Set up Docker Buildx
 ```
-- name: Push Docker image
-  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-  run: docker push ghcr.io/org/myservice:${{ github.sha }}
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
 ```
 
+### 1.7. Extract Docker metadata
+```
+- name: Extract Docker metadata
+  id: meta
+  uses: docker/metadata-action@v5
+  with:
+    images: ${{ github.repository }}
+    tags: |
+      type=ref,event=branch
+      type=sha
+      type=semver,pattern={{version}}
+    labels: |
+      org.opencontainers.image.title=${{ github.repository }}
+      org.opencontainers.image.vendor=hsldevcom
+```
+
+### 1.8. Log in to GitHub Container Registry
+```
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 1.9. Build & Push Docker image
+```
+- name: Build and push Docker image
+  uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+    tags: ${{ steps.meta.outputs.tags }}
+    labels: ${{ steps.meta.outputs.labels }}
+```
 ### 2. Kotlin + Gradle
 
 #### 2.1. Setup
@@ -130,16 +164,52 @@ with:
 #### 2.5. Build Docker Image
 ```
 - name: Build Docker image
-  run: docker build -t ghcr.io/org/myservice:${{ github.sha }} .
+  run: docker build -t ghcr.io/org/${{ github.repository }}:${{ github.sha }} .
 ```
 
 In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
 
-#### 2.6. Push Docker image
+### 2.6. Set up Docker Buildx
 ```
-- name: Push Docker image
-  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-  run: docker push ghcr.io/org/myservice:${{ github.sha }}
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
+```
+
+### 2.7. Extract Docker metadata
+```
+- name: Extract Docker metadata
+  id: meta
+  uses: docker/metadata-action@v5
+  with:
+    images: ${{ github.repository }}
+    tags: |
+      type=ref,event=branch
+      type=sha
+      type=semver,pattern={{version}}
+    labels: |
+      org.opencontainers.image.title=${{ github.repository }}
+      org.opencontainers.image.vendor=hsldevcom
+```
+
+### 2.8. Log in to GitHub Container Registry
+```
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 2.9. Build & Push Docker image
+```
+- name: Build and push Docker image
+  uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+    tags: ${{ steps.meta.outputs.tags }}
+    labels: ${{ steps.meta.outputs.labels }}
 ```
 
 ### 3. TypeScript (Node.js/Yarn)
@@ -163,19 +233,19 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 3.2. Check code formatting & linting
 ```
 - name: Check code formatting
-  run: npm run format:check
+  run: yarn run format:check
 ```
 
 #### 3.3. Run tests
 ```
 - name: Run tests
-  run: npm test -- --coverage
+  run: yarn test -- --coverage
 ```
 
 #### 3.4. Build artifact
 ```
 - name: Build app
-  run: npm run build
+  run: yarn run build
 ```
 
 #### 3.5. Build Docker Image
@@ -186,11 +256,47 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 
 In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
 
-#### 3.6. Push Docker image
+### 3.6. Set up Docker Buildx
 ```
-- name: Push Docker image
-  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-  run: docker push ghcr.io/org/myservice:${{ github.sha }}
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
+```
+
+### 3.7. Extract Docker metadata
+```
+- name: Extract Docker metadata
+  id: meta
+  uses: docker/metadata-action@v5
+  with:
+    images: ${{ github.repository }}
+    tags: |
+      type=ref,event=branch
+      type=sha
+      type=semver,pattern={{version}}
+    labels: |
+      org.opencontainers.image.title=${{ github.repository }}
+      org.opencontainers.image.vendor=hsldevcom
+```
+
+### 3.8. Log in to GitHub Container Registry
+```
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 3.9. Build & Push Docker image
+```
+- name: Build and push Docker image
+  uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+    tags: ${{ steps.meta.outputs.tags }}
+    labels: ${{ steps.meta.outputs.labels }}
 ```
 
 ### 4. Python
@@ -235,11 +341,47 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 
 In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
 
-#### 4.6. Push Docker image
+### 4.6. Set up Docker Buildx
 ```
-- name: Push Docker image
-  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
-  run: docker push ghcr.io/org/myservice:${{ github.sha }}
+- name: Set up Docker Buildx
+  uses: docker/setup-buildx-action@v3
+```
+
+### 4.7. Extract Docker metadata
+```
+- name: Extract Docker metadata
+  id: meta
+  uses: docker/metadata-action@v5
+  with:
+    images: ${{ github.repository }}
+    tags: |
+      type=ref,event=branch
+      type=sha
+      type=semver,pattern={{version}}
+    labels: |
+      org.opencontainers.image.title=${{ github.repository }}
+      org.opencontainers.image.vendor=hsldevcom
+```
+
+### 4.8. Log in to GitHub Container Registry
+```
+- name: Log in to GitHub Container Registry
+  uses: docker/login-action@v3
+  with:
+    registry: ghcr.io
+    username: ${{ github.actor }}
+    password: ${{ secrets.GITHUB_TOKEN }}
+```
+
+#### 4.9. Build & Push Docker image
+```
+- name: Build and push Docker image
+  uses: docker/build-push-action@v6
+  with:
+    context: .
+    push: ${{ github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop' }}
+    tags: ${{ steps.meta.outputs.tags }}
+    labels: ${{ steps.meta.outputs.labels }}
 ```
 
 The reusable workflows will be centralized in `./github/workflows` within a shared repo, i.e. `transitdata-workflows-templates`.
