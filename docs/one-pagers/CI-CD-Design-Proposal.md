@@ -25,22 +25,48 @@ the need to standardize how all these pipelines are being shaped and are being e
 
 As an example to demonstrate why the need of standardization exists, recently, there was an initiative to integrate code formatting into each and every project. The initiative was consumed by implementing
 manual changes in every source-code repository and in each repo's CI/CD pipeline definitions.
-This could have been implemented easier if some standard templates had been used for implementing the CI/CD pipelines.
+This could have been implemented easier if some standard reusable workflows had been used for implementing the CI/CD pipelines.
 
-Another example that can prove the usefulness of shared GitHub Actions templates is in case of increasing some programming language (eg: Java, node.js) version or some other build-tool related technology.
-This can be done only in the templates and reuse them as needed, instead of changing each and ever pipeline definition.
+Another example that can prove the usefulness of shared GitHub Actions reusable workflows is in case of increasing some programming language (eg: Java, node.js) version or some other build-tool related technology.
+This can be done only in the reusable workflows and reuse them as needed, instead of changing each and ever pipeline definition.
 
-By implementing a standard way that will be based on GitHub Actions shared templates that will be used subsequently to create specific CI/CD pipelines,
+By implementing a standard way that will be based on GitHub Actions shared reusable workflows that will be used subsequently to create specific CI/CD pipelines,
 in a situation as the one described above, cross-functional aspects that can be implemented just at the template level, rather than changing all the CI/CD pipelines. 
 
 ## How?
 
-As it was already mentioned, the standardization will be implemented by creating some shared GitHub Actions templates that can be subsequently used for existing 
+As it was already mentioned, the standardization will be implemented by creating some shared GitHub Actions reusable workflows that can be subsequently used for existing 
 projects and reused in case of new projects that will be developed from now on.
 
-The templates will be covered as **two reusable workflows**:
-- `ci.yml` -> triggered on PRs and pushes; runs up to Docker build (no push)
-- `cd.yml` → triggered on `main`/`dev` branch merges or tags; handles image publish + deploy
+Two alternative ways of how to implement the standardization for CI/CD pipelines have been identified:
+
+1. Split the pipelines into separate `yml` definitions, i.e. `ci.yml` and `cd.yml`;
+
+### Pros:
+- this approach will follow the Single Responsibility Principle, as CI and CD will be separated in two different `yml` definitions;
+- the reusability will be increased as `cd.yml` is similar from one combination of programming language and build tool to another;
+- the complexity of each definition will be lowered compared to an alternative `ci-cd.yml` definition. 
+
+### Cons:
+- as the separation will be implemented, it does make sense to have the CD running only for passing CI run.
+CI requires building a Docker image so that the tests can be run inside of it. 
+After the CI workflow ends, normally its contents would disappear and the CD workflow would have to rebuild the Docker image. 
+It's not just extra work. There's a theoretical chance that CD will rebuild the Docker image differently, for example because of `apt update` which is tricky to use version pinning with. 
+Then the tests would have been run with a different container than the one running in `dev` and `prod`.
+- this solution will overcomplicate the entire GitHub Actions workflow and setup
+
+2. Use a single `ci-cd.yml` definition that will contain both pipelines
+
+### Pros
+- the GitHub Actions workflow will not be overcomplicated by the necessary sharing of the build Docker image between the CI and CD;
+- straightforward definitions for each programming language and build tool combinations;
+
+### Cons
+- all the listed Pros from the first solution will not be maintained in this scenario.
+
+Given these facts the reusable workflows will be covered as a single `ci-cd.yml` definition:
+- the CI-related stages will be triggered on PRs and pushes; runs up to Docker build (no push)
+- the CD-related stages will be triggered on `main`/`dev` branch merges or tags; handles image publish + deploy
 
 ### 1. Java + Maven
 **Tools:** `mvn`, `spotless`, `JUnit`
@@ -55,8 +81,8 @@ In `ci.yml` we will have the following stages:
 
 - uses: actions/setup-java@v4
   with:
-  distribution: 'temurin'
-  java-version: '21'
+    distribution: 'temurin'
+    java-version: '21'
 ```
 
 #### 1.2. Check code formatting & linting
@@ -84,17 +110,17 @@ In `ci.yml` we will have the following stages:
   run: docker build -t ghcr.io/org/${{ github.repository }}:${{ github.sha }} .
 ```
 
-In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
-
 ### 1.6. Set up Docker Buildx
 ```
 - name: Set up Docker Buildx
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/setup-buildx-action@v3
 ```
 
 ### 1.7. Extract Docker metadata
 ```
 - name: Extract Docker metadata
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   id: meta
   uses: docker/metadata-action@v5
   with:
@@ -111,6 +137,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 ### 1.8. Log in to GitHub Container Registry
 ```
 - name: Log in to GitHub Container Registry
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/login-action@v3
   with:
     registry: ghcr.io
@@ -121,6 +148,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 1.9. Build & Push Docker image
 ```
 - name: Build and push Docker image
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/build-push-action@v6
   with:
     context: .
@@ -133,12 +161,12 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 2.1. Setup
 ```
 - uses: actions/checkout@v4
-- name: Set up JDK 11
-uses: actions/setup-java@v4
-with:
-  distribution: 'temurin'
-  java-version: '11'
-  cache: 'gradle'
+  name: Set up JDK 11
+    uses: actions/setup-java@v4
+    with:
+      distribution: 'temurin'
+      java-version: '11'
+      cache: 'gradle'
 ```
 
 #### 2.2. Check code formatting & linting
@@ -167,17 +195,17 @@ with:
   run: docker build -t ghcr.io/org/${{ github.repository }}:${{ github.sha }} .
 ```
 
-In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
-
 ### 2.6. Set up Docker Buildx
 ```
 - name: Set up Docker Buildx
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/setup-buildx-action@v3
 ```
 
 ### 2.7. Extract Docker metadata
 ```
 - name: Extract Docker metadata
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   id: meta
   uses: docker/metadata-action@v5
   with:
@@ -194,6 +222,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 ### 2.8. Log in to GitHub Container Registry
 ```
 - name: Log in to GitHub Container Registry
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/login-action@v3
   with:
     registry: ghcr.io
@@ -204,6 +233,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 2.9. Build & Push Docker image
 ```
 - name: Build and push Docker image
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/build-push-action@v6
   with:
     context: .
@@ -254,17 +284,17 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
   run: docker build -t ghcr.io/org/myservice:${{ github.sha }} .
 ```
 
-In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
-
 ### 3.6. Set up Docker Buildx
 ```
 - name: Set up Docker Buildx
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/setup-buildx-action@v3
 ```
 
 ### 3.7. Extract Docker metadata
 ```
 - name: Extract Docker metadata
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   id: meta
   uses: docker/metadata-action@v5
   with:
@@ -281,6 +311,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 ### 3.8. Log in to GitHub Container Registry
 ```
 - name: Log in to GitHub Container Registry
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/login-action@v3
   with:
     registry: ghcr.io
@@ -291,6 +322,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 3.9. Build & Push Docker image
 ```
 - name: Build and push Docker image
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/build-push-action@v6
   with:
     context: .
@@ -339,17 +371,17 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
   run: docker build -t ghcr.io/org/myservice:${{ github.sha }} .
 ```
 
-In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the following stages:
-
 ### 4.6. Set up Docker Buildx
 ```
 - name: Set up Docker Buildx
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/setup-buildx-action@v3
 ```
 
 ### 4.7. Extract Docker metadata
 ```
 - name: Extract Docker metadata
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   id: meta
   uses: docker/metadata-action@v5
   with:
@@ -366,6 +398,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 ### 4.8. Log in to GitHub Container Registry
 ```
 - name: Log in to GitHub Container Registry
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/login-action@v3
   with:
     registry: ghcr.io
@@ -376,6 +409,7 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
 #### 4.9. Build & Push Docker image
 ```
 - name: Build and push Docker image
+  if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
   uses: docker/build-push-action@v6
   with:
     context: .
@@ -384,9 +418,9 @@ In `cd.yml`, that will run only on `main` or `dev` branches,  we will have the f
     labels: ${{ steps.meta.outputs.labels }}
 ```
 
-The reusable workflows will be centralized in `./github/workflows` within a shared repo, i.e. `transitdata-workflows-templates`.
-There might be multiple templates per each combination of programming language and build tool (eg: `ci-java-maven.yml`, `ci-kotlin-gradle.yml`, `ci-node.yml`, etc.)
-Afterward, in each microservice repo, the templates might be referenced as it follows:
+The reusable workflows will be centralized in `./github/workflows` within a shared repo, i.e. `transitdata-shared-workflows`.
+There might be multiple reusable shared workflows per each combination of programming language and build tool (eg: `ci-java-maven.yml`, `ci-kotlin-gradle.yml`, `ci-node.yml`, etc.)
+Afterward, in each microservice repo, the reusable workflows might be referenced as it follows:
 
 ```
 name: CI
@@ -394,11 +428,11 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main, develop ]
+    branches: '**'
 
 jobs:
-  call-ci:
-    uses: HSL/transitdata-workflows-templates/.github/workflows/ci-node.yml@main
+  call-ci-cd:
+    uses: HSL/transitdata-shared-workflows/.github/workflows/ci-cd-node.yml@main
     with:
       docker-image-name: myservice
     secrets: inherit
