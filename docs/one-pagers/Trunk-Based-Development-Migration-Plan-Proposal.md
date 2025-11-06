@@ -25,10 +25,10 @@ We are moving to **trunk-based development** across all repositories by:
 - `main` is **always releasable**
 - Smaller and more frequent merges
 - Automated CI/CD becomes simpler and more reliable
-- Industry standard at companies like Google, Netflix, Meta, Amazon
+- Industry standard at companies like Microsoft, Google, Netflix, Meta, Amazon
 
 ### 3. One single source of truth
-- No more “Does this exist in dev or only in main?”
+- No more “_Does this exist in `dev` or only in `main`?_”
 - No manual branch syncing or rebase headaches
 - No duplication of pipelines or environments
 
@@ -36,6 +36,11 @@ We are moving to **trunk-based development** across all repositories by:
 - Feature branches can be deployed to test/non-prod envs
 - Supports ephemeral preview environments (`pr-123.example.com`)
 - No need for a permanent `dev` branch anymore
+
+### 5. Confusion & technical debt causes
+- There is a constant confusion between `dev` and `aks-dev`, for repos where both of branches exists
+- `aks-dev` is living for purely historical reasons, after migrating services to Azure Kubernetes Service
+- `aks-dev` is purely technical debt and it needs to be eliminated
 
 ---
 
