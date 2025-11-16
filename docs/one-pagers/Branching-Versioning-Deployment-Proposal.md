@@ -18,7 +18,7 @@ The design aims to reduce manual work, limit human errors, and ensure reliable t
 
 ## Why?
 
-Currently, branching, versioning, and deployment practices vary across teams.  
+Currently, branching, versioning, and deployment practices vary across repositories.  
 This inconsistency causes:
 
 - Merge conflicts and confusion about release readiness
@@ -37,13 +37,7 @@ By adopting a consistent approach—centered around **trunk-based development**,
 
 We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https://trunkbaseddevelopment.com/)):
 
-- `main` is the **single long-lived branch**.
-- Developers create short-lived feature branches → merged into `main` via PRs after review.
-- The **development environment** automatically follows the `main` branch.
-- **Staging** and **Production** deployments are based on Git tags.
-
-**Rationale:**  
-Having persistent, parallel environment branches (e.g., `staging`, `prod`) adds maintenance overhead without reducing the need for cherry-picking hot-fixes. Trunk-based flow simplifies both merging and automation.
+[See Trunk Based Development Migration Plan Proposal](./Trunk-Based-Development-Migration-Plan-Proposal.md)
 
 ---
 
@@ -106,13 +100,11 @@ Deployments reference either immutable version tags (`vX.Y.Z`) or specific commi
 | Environment | Source | Trigger | Tag | CAB Required | Notes |
 |--------------|---------|----------|------|----------------|-------|
 | **Development** | `main` branch | Auto on merge | commit SHA | No | Continuous deployment of latest commits |
-| **Staging** | CAB pre-approved commit | Manual/tag-based | `vX.Y.Z-rc` | Pre-review | Used for testing and validation |
-| **Production** | CAB-approved tag | Manual promotion | `vX.Y.Z` | Yes | Immutable release deployment |
+| **Production** | `main` branch | Manual promotion | `vX.Y.Z` | Yes | Immutable release deployment |
 
 Promotion between environments is handled via:
 
 - Git tag creation or image promotion
-- GitOps tooling detecting new tags and deploying automatically
 
 Rollback is straightforward: re-deploy a previous tag (`v1.1.4`).
 
