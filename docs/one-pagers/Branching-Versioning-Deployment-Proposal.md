@@ -125,7 +125,7 @@ Docker tags mirror Git commit and versioning states for clear traceability.
 
 Each image built from CI/CD gets:
 
-- **Commit tag:** `:sha-<short-sha>` — exact build traceability
+- **Commit tag:** `:sha-<long-sha>` — exact build traceability
 - **Version tag:** `:X.Y.Z` — immutable release version (no `v` prefix)
 - **Edge tag:** `:edge` — rolling tag updated on every merge to `main`
 
