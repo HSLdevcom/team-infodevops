@@ -146,10 +146,10 @@ The `edge` tag tracks the latest `main` commit and is used by the development en
 
 We currently have two environments: development and production.
 
-| Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
-|--------------|---------|----------|------------|----------------|-------|
-| **Development** | `main` | Manual (pipeline trigger) | `edge` | No | Deployment of latest `main` |
-| **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Immutable release deployment |
+| Environment | Git Source | Trigger | Docker Tag | CAB Required | Notes |
+|--------------|-------------|----------|------------|----------------|-------|
+| **Development** | `main` branch | Manual (pipeline trigger) | `edge` | No | Deployment of latest `main` |
+| **Production** | `Git tag vX.Y.Z` | Manual promotion | `X.Y.Z` | Yes | Immutable release deployment |
 
 Current promotion flow:
 
@@ -163,11 +163,11 @@ Rollback is manual: re-deploy a previous version tag (e.g., `1.1.0`).
 
 A **staging** environment will be added between development and production. Production becomes a delayed version of staging: every version deployed to production has first been validated in staging.
 
-| Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
-|--------------|---------|----------|------------|----------------|-------|
-| **Development** | `main` | Auto on merge | `edge` | No | Automatic deployment of latest `main` (via GitOps, see future proposal) |
-| **Staging** | `main` | Git tag `vX.Y.Z` | `X.Y.Z` | No | Validates a release before production |
-| **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Same version tag as staging, after CAB approval |
+| Environment | Git Source | Trigger | Docker Tag | CAB Required | Notes |
+|--------------|-------------|----------|------------|----------------|-------|
+| **Development** | `main` branch | Auto on merge | `edge` | No | Automatic deployment of latest `main` (via GitOps, see future proposal) |
+| **Staging** | `Git tag vX.Y.Z` | Git tag `vX.Y.Z` pushed to GitHub | `X.Y.Z` | No | Validates a release before production |
+| **Production** | `Git tag vX.Y.Z` | Manual promotion | `X.Y.Z` | Yes | Same version tag as staging, after CAB approval |
 
 Target promotion flow:
 
