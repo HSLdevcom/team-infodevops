@@ -56,8 +56,27 @@ Use [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0.html
 | Level | Trigger | Example |
 |--------|----------|----------|
 | MAJOR | Breaking API or schema change | 2.0.0 |
-| MINOR | Backward-compatible feature | 1.2.0 |
-| PATCH | Bug or security fix | 1.2.3 |
+| MINOR | Regular release from `main` (features, improvements, bug fixes) | 1.2.0 |
+| PATCH | Hot-fix to a specific release (see section 6) | 1.2.1 |
+
+#### Convention: MINOR for releases, PATCH for hot-fixes
+
+Regular releases from `main` always bump at least **MINOR**. **PATCH** is reserved exclusively for hot-fixes applied to a specific release via a `fix/` branch.
+
+**Why?** When multiple environments run different versions, PATCH-level releases would create version conflicts. Consider:
+
+```
+staging:      1.3.0
+production:   1.2.0
+```
+
+If production needs an urgent fix, it is tagged as `v1.2.1`. This is unambiguous: `1.2.1` is a patch to `1.2.0` and has nothing to do with `1.3.0`. Staging can independently receive its own fix as `v1.3.1` if needed.
+
+If instead both staging and production used PATCH for regular releases (e.g., staging at `1.2.4`, production at `1.2.3`), a hot-fix to production could not use `1.2.5` without implying it contains `1.2.4`'s changes, which it does not. SemVer provides no suffix or modifier that resolves this: pre-release versions (e.g., `1.2.4-hotfix.1`) have *lower* precedence than `1.2.4` in SemVer, and build metadata (e.g., `1.2.4+hotfix.1`) is ignored for precedence entirely.
+
+By reserving PATCH for hot-fixes, each MINOR release gets its own isolated patch space and no version conflicts can occur between environments.
+
+**SemVer compatibility:** The SemVer spec allows MINOR releases to include patch-level (bug fix) changes. In trunk-based development, releases from `main` almost always include at least some new functionality or improvement, making MINOR the appropriate bump. For the rare case of a release containing only bug fixes, bumping MINOR is a pragmatic choice that preserves the version space isolation described above.
 
 This version number is applied consistently across:
 
@@ -76,10 +95,10 @@ Git tags define deployment points.
 
 | Tag Type | Example | Purpose |
 |-----------|----------|----------|
-| Release | `v1.2.0` | Stable version for staging and production |
-| Patch | `v1.2.1` | Bug fix or security update |
+| Release | `v1.2.0` | Regular release from `main` for staging and production |
+| Patch | `v1.2.1` | Hot-fix to a specific release via a `fix/` branch |
 
-Tags are created from commits on `main`.
+Tags are created from commits on `main` (releases) or from `fix/` branches (patches).
 These tags trigger Docker image builds. Both staging and production deploy from these version tags.
 Releases and CAB decisions refer to these tags for auditability.
 
@@ -152,11 +171,13 @@ When an urgent fix is needed in production:
 
 1. The fix is developed on a short-lived **`fix/` branch** (e.g., `fix/auth-token-expiry`) created from the commit that the current production tag points to.
 2. The fix is also merged to `main` so trunk stays ahead.
-3. A new **patch version tag** (e.g., `v1.2.1`) is created on the `fix/` branch.
-4. The resulting Docker image (`1.2.1`) is deployed to staging and then production.
+3. A new **PATCH version tag** (e.g., `v1.2.1`) is created on the `fix/` branch. Because regular releases always bump MINOR, the PATCH space is available exclusively for hot-fixes (see section 2).
+4. The resulting Docker image (`1.2.1`) is deployed to production (and staging, once available).
 5. The `fix/` branch is **deleted** once the patch tag is in place.
 
 The `fix/` branch is short-lived (days to weeks at most). It exists only until the next regular release from `main` includes the same fix, at which point production catches up with trunk.
+
+If multiple environments need the same fix, each environment's current MINOR release is patched independently (e.g., production at `1.2.0` gets `v1.2.1`, staging at `1.3.0` gets `v1.3.1`). This avoids version conflicts between environments.
 
 All **Dependabot** or manual security PRs target `main`. If the fix is urgent enough to bypass the normal release cycle, the `fix/` branch process above is used.
 
