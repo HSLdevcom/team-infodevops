@@ -100,16 +100,20 @@ The `edge` tag tracks the latest `main` commit and is used by the development en
 
 ### 5. Deployment Process (Environment Promotion)
 
-| Environment | Source | Trigger | Tag | CAB Required | Notes |
-|--------------|---------|----------|------|----------------|-------|
-| **Development** | `main` branch | Auto on merge | commit SHA | No | Continuous deployment of latest commits |
-| **Production** | `main` branch | Manual promotion | `vX.Y.Z` | Yes | Immutable release deployment |
+| Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
+|--------------|---------|----------|------------|----------------|-------|
+| **Development** | `main` | Auto on merge | `edge` | No | Rolling deployment of latest `main` |
+| **Staging** | `main` | Git tag `vX.Y.Z` | `X.Y.Z` | No | Validates a release before production |
+| **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Same version tag as staging, after CAB approval |
 
-Promotion between environments is handled via:
+Promotion flow:
 
-- Git tag creation or image promotion
+1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag.
+2. When a release is ready, a Git tag (`vX.Y.Z`) is created on `main`, producing an immutable Docker image tagged `X.Y.Z`.
+3. The `X.Y.Z` image is deployed to **staging** for validation.
+4. After CAB approval, the same `X.Y.Z` image is promoted to **production**.
 
-Rollback is straightforward: re-deploy a previous tag (`v1.1.4`).
+Rollback is manual: re-deploy a previous version tag (e.g., `1.1.4`).
 
 ---
 
