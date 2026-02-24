@@ -63,16 +63,29 @@ Based on [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0
 
 Regular releases from `main` always bump at least **MINOR**. **PATCH** is reserved exclusively for hot-fixes applied to a specific release via a `fix/` branch.
 
-**Why?** When multiple environments run different versions, PATCH-level releases would create version conflicts. Consider:
+**Why?** When multiple environments run different versions, PATCH-level releases can create version conflicts.
+
+##### Problem: using PATCH for regular releases
+
+If both staging and production use PATCH for regular releases:
+
+```
+staging:      1.2.4
+production:   1.2.3
+```
+
+A hot-fix to production could not use `1.2.5` without implying it contains `1.2.4`'s changes, which it does not. SemVer provides no suffix or modifier that resolves this: pre-release versions (e.g., `1.2.4-hotfix.1`) have *lower* precedence than `1.2.4` in SemVer, and build metadata (e.g., `1.2.4+hotfix.1`) is ignored for precedence entirely.
+
+##### Solution: reserving PATCH for hot-fixes
+
+If regular releases always bump MINOR:
 
 ```
 staging:      1.3.0
 production:   1.2.0
 ```
 
-If production needs an urgent fix, it is tagged as `v1.2.1`. This is unambiguous: `1.2.1` is a patch to `1.2.0` and has nothing to do with `1.3.0`. Staging can independently receive its own fix as `v1.3.1` if needed.
-
-If instead both staging and production used PATCH for regular releases (e.g., staging at `1.2.4`, production at `1.2.3`), a hot-fix to production could not use `1.2.5` without implying it contains `1.2.4`'s changes, which it does not. SemVer provides no suffix or modifier that resolves this: pre-release versions (e.g., `1.2.4-hotfix.1`) have *lower* precedence than `1.2.4` in SemVer, and build metadata (e.g., `1.2.4+hotfix.1`) is ignored for precedence entirely.
+A production hot-fix is tagged as `v1.2.1`. This is unambiguous: `1.2.1` is a patch to `1.2.0` and has nothing to do with `1.3.0`. Staging can independently receive its own fix as `v1.3.1` if needed.
 
 By reserving PATCH for hot-fixes, each MINOR release gets its own isolated patch space and no version conflicts can occur between environments.
 
