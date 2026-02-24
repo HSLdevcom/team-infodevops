@@ -66,6 +66,8 @@ This version number is applied consistently across:
 - Deployment metadata
 - Release notes
 
+Version bumps are currently a **manual decision** by the developer or team when creating a release tag. Automating this process (e.g., via [Conventional Commits](https://www.conventionalcommits.org/) and [semantic-release](https://github.com/semantic-release/semantic-release)) is deferred to a future proposal.
+
 ---
 
 ### 3. Git Tags
