@@ -146,12 +146,12 @@ We currently have two environments: development and production.
 
 | Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
 |--------------|---------|----------|------------|----------------|-------|
-| **Development** | `main` | Auto on merge | `edge` | No | Rolling deployment of latest `main` |
+| **Development** | `main` | Manual (pipeline trigger) | `edge` | No | Deployment of latest `main` |
 | **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Immutable release deployment |
 
 Current promotion flow:
 
-1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag.
+1. Merges to `main` are deployed to **development** via the `edge` Docker tag by manually triggering the CI/CD pipeline.
 2. When a release is ready, a Git tag (`vX.Y.Z`) is created on `main`, producing an immutable Docker image tagged `X.Y.Z`.
 3. After CAB approval, the `X.Y.Z` image is deployed to **production**.
 
@@ -163,13 +163,13 @@ A **staging** environment will be added between development and production. Prod
 
 | Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
 |--------------|---------|----------|------------|----------------|-------|
-| **Development** | `main` | Auto on merge | `edge` | No | Rolling deployment of latest `main` |
+| **Development** | `main` | Auto on merge | `edge` | No | Automatic deployment of latest `main` (via GitOps, see future proposal) |
 | **Staging** | `main` | Git tag `vX.Y.Z` | `X.Y.Z` | No | Validates a release before production |
 | **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Same version tag as staging, after CAB approval |
 
 Target promotion flow:
 
-1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag.
+1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag (GitOps).
 2. When a release is ready, a Git tag (`vX.Y.Z`) is created on `main`, producing an immutable Docker image tagged `X.Y.Z`.
 3. The `X.Y.Z` image is deployed to **staging** for validation.
 4. After CAB approval, the same `X.Y.Z` image is promoted to **production**.
