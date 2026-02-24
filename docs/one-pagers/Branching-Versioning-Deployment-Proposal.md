@@ -44,7 +44,7 @@ We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https
 
 ### 2. Version Number Scheme
 
-Use **Semantic Versioning (SemVer)**:  
+Use [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0.html):  
 `MAJOR.MINOR.PATCH`
 
 | Level | Trigger | Example |
