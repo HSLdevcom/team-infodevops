@@ -117,14 +117,21 @@ Rollback is manual: re-deploy a previous version tag (e.g., `1.1.4`).
 
 ---
 
-### 6. Security Hot-fixes
+### 6. Hot-fixes
 
-- All **Dependabot** or manual security PRs target the default (`main`) branch.
-- Urgent production fixes are **cherry-picked** from `main` onto the currently deployed production tag’s base commit.
-- A new **patch version tag** (`v1.2.1`) is created and deployed directly to production.
-- Normal development continues on `main` uninterrupted.
+When an urgent fix is needed in production:
 
-This ensures critical fixes reach production fast, without merging unfinished features.
+1. The fix is developed on a short-lived **`fix/` branch** (e.g., `fix/auth-token-expiry`) created from the commit that the current production tag points to.
+2. The fix is also merged to `main` so trunk stays ahead.
+3. A new **patch version tag** (e.g., `v1.2.1`) is created on the `fix/` branch.
+4. The resulting Docker image (`1.2.1`) is deployed to staging and then production.
+5. The `fix/` branch is **deleted** once the patch tag is in place.
+
+The `fix/` branch is short-lived (days to weeks at most). It exists only until the next regular release from `main` includes the same fix, at which point production catches up with trunk.
+
+All **Dependabot** or manual security PRs target `main`. If the fix is urgent enough to bypass the normal release cycle, the `fix/` branch process above is used.
+
+The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://www.conventionalcommits.org/).
 
 ---
 
