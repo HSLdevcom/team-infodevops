@@ -11,7 +11,7 @@ To improve development speed, consistency, and deployment safety, this proposal 
 - Security hot-fixes
 - CAB approval process
 
-API and Pulsar topic versioning are covered in a [separate proposal](./API-Pulsar-Versioning-Proposal.md).
+API and Pulsar topic versioning are covered in a future proposal.
 
 The design aims to reduce manual work, limit human errors, and ensure reliable traceability from commit → Docker image → environment deployment.
 
