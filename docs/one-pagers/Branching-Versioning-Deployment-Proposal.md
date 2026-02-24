@@ -200,12 +200,12 @@ The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://
 | Aspect | Decision |
 |--------|-----------|
 | **Branching** | Trunk-based (`main` only, short-lived feature and `fix/` branches) |
-| **Version Scheme** | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), manual bumps for now |
-| **Git Tags** | `vX.Y.Z` |
+| **Version Scheme** | [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html): MINOR for releases, PATCH for hot-fixes only |
+| **Git Tags** | `vX.Y.Z` (releases from `main`, patches from `fix/` branches) |
 | **Docker Tags** | `:edge`, `:X.Y.Z`, `:sha-<short-sha>` |
-| **Environments** | Development (`edge`), staging (`X.Y.Z`), production (`X.Y.Z` after CAB) |
-| **Hot-fixes** | Short-lived `fix/` branch + patch tag |
-| **CAB** | Mandatory before production, reviews staging-validated releases |
+| **Environments** | Development (`edge`) + production (`X.Y.Z`); staging (`X.Y.Z`) planned |
+| **Hot-fixes** | Short-lived `fix/` branch + PATCH tag, isolated per MINOR version |
+| **CAB** | Mandatory before production; staging validation planned |
 
 ---
 
