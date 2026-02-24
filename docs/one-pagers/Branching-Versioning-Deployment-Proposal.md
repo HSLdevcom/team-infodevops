@@ -56,7 +56,7 @@ Use **Semantic Versioning (SemVer)**:
 This version number is applied consistently across:
 
 - Git tags (`v1.2.3`)
-- Docker image tags (`:v1.2.3`)
+- Docker image tags (`:1.2.3`)
 - Deployment metadata
 - Release notes
 
@@ -83,15 +83,18 @@ Docker tags mirror Git commit and versioning states for clear traceability.
 
 Each image built from CI/CD gets:
 
-- **Commit tag:** `:<git-sha>` — exact build traceability
-- **Version tag:** `:vX.Y.Z` — immutable release version
+- **Commit tag:** `:sha-<short-sha>` — exact build traceability
+- **Version tag:** `:X.Y.Z` — immutable release version (no `v` prefix)
+- **Edge tag:** `:edge` — rolling tag updated on every merge to `main`
 
 **Example:**
-ghcr.io/org/service:v1.2.0
-ghcr.io/org/service:commit-1d4cac8
+```
+ghcr.io/org/service:edge
+ghcr.io/org/service:1.2.0
+ghcr.io/org/service:sha-1d4cac8
+```
 
-
-Deployments reference either immutable version tags (`vX.Y.Z`) or specific commit tags for reproducibility.
+The `edge` tag tracks the latest `main` commit and is used by the development environment. Version tags (`X.Y.Z`) are immutable and used by staging and production.
 
 ---
 
@@ -137,7 +140,7 @@ This ensures critical fixes reach production fast, without merging unfinished fe
 | **Branching** | Trunk-based (`main` only, short-lived features) |
 | **Version Scheme** | Semantic Versioning (SemVer) |
 | **Git Tags** | `vX.Y.Z` |
-| **Docker Tags** | `:commit-sha`, `:vX.Y.Z` |
+| **Docker Tags** | `:edge`, `:X.Y.Z`, `:sha-<short-sha>` |
 | **Deployments** | GitOps or pipeline-driven promotion between environments |
 | **Hot-fixes** | Cherry-pick + patch release |
 | **CAB** | Mandatory before production |
