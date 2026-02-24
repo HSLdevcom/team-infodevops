@@ -55,7 +55,7 @@ Based on [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0
 
 | Level | Trigger | Example |
 |--------|----------|----------|
-| MAJOR | Breaking API or schema change | 2.0.0 |
+| MAJOR | Breaking change: API, schema, deployment configuration (e.g. renamed/removed K8s manifest variables), or significant change in service scope affecting downstream consumers | 2.0.0 |
 | MINOR | Regular release from `main` (features, improvements, bug fixes) | 1.2.0 |
 | PATCH | Hot-fix to a specific release (see section 6) | 1.2.1 |
 
