@@ -145,9 +145,10 @@ The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://
 
 ### 7. CAB Meetings
 
-- CAB meetings are held before production deployments.
-- CAB decisions explicitly approve a Git tag (e.g., `v1.2.0`).
-- The deployment process uses this approved tag for production rollout.
+- CAB meetings are held before promoting a release to production.
+- By the time CAB reviews a release, the version has already been validated in staging.
+- CAB decisions explicitly approve a Git tag (e.g., `v1.2.0`) for production deployment.
+- The deployment process promotes the approved Docker image (`1.2.0`) to production.
 - CAB records link back to the tag and its changelog for traceability.
 
 ---
