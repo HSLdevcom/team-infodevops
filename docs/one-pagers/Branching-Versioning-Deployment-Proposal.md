@@ -42,6 +42,8 @@ Regarding terminology, ["A branch in Git is simply a lightweight movable pointer
 - **Short-lived branches** — for features, bug fixes, refactoring, and other development work. Named by type of change, e.g. `feat/`, `fix/`, `refactor/` (aligned with [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) types). Merged to `main` via pull request and then deleted.
 - **`fix/` branches** (hot-fixes) — a special case: created from the commit that the production tag points to, not from `main` (see section 6). Deleted once the patch tag exists.
 
+It is recommended to include the issue number in the branch name for traceability, e.g. `feat/123-add-login` or `fix/456-token-expiry`. The issue number is not required — some work is done without a tracked issue. When using [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/), the issue reference goes in the commit message footer (e.g. `Refs: #123` or `Fixes: #456`). This practice aligns with the future release management proposal.
+
 We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https://trunkbaseddevelopment.com/)).
 
 [See Trunk Based Development Migration Plan Proposal](./Trunk-Based-Development-Migration-Plan-Proposal.md)
