@@ -131,7 +131,7 @@ Each image built from CI/CD gets:
 ```
 ghcr.io/org/service:edge
 ghcr.io/org/service:1.2.0
-ghcr.io/org/service:sha-1d4cac8
+ghcr.io/org/service:sha-0c7cd9f834344872ae8410fd679848bfacca8406
 ```
 
 The `edge` tag tracks the latest `main` commit and is used by the development environment. Version tags (`X.Y.Z`) are immutable and used by staging and production.
