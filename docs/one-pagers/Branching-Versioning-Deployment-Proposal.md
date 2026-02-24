@@ -108,20 +108,41 @@ The `edge` tag tracks the latest `main` commit and is used by the development en
 
 ### 5. Deployment Process (Environment Promotion)
 
+#### Current state
+
+We currently have two environments: development and production.
+
+| Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
+|--------------|---------|----------|------------|----------------|-------|
+| **Development** | `main` | Auto on merge | `edge` | No | Rolling deployment of latest `main` |
+| **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Immutable release deployment |
+
+Current promotion flow:
+
+1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag.
+2. When a release is ready, a Git tag (`vX.Y.Z`) is created on `main`, producing an immutable Docker image tagged `X.Y.Z`.
+3. After CAB approval, the `X.Y.Z` image is deployed to **production**.
+
+Rollback is manual: re-deploy a previous version tag (e.g., `1.1.0`).
+
+#### Target state
+
+A **staging** environment will be added between development and production. Production becomes a delayed version of staging: every version deployed to production has first been validated in staging.
+
 | Environment | Source | Trigger | Docker Tag | CAB Required | Notes |
 |--------------|---------|----------|------------|----------------|-------|
 | **Development** | `main` | Auto on merge | `edge` | No | Rolling deployment of latest `main` |
 | **Staging** | `main` | Git tag `vX.Y.Z` | `X.Y.Z` | No | Validates a release before production |
 | **Production** | `main` | Manual promotion | `X.Y.Z` | Yes | Same version tag as staging, after CAB approval |
 
-Promotion flow:
+Target promotion flow:
 
 1. Every merge to `main` automatically deploys to **development** via the `edge` Docker tag.
 2. When a release is ready, a Git tag (`vX.Y.Z`) is created on `main`, producing an immutable Docker image tagged `X.Y.Z`.
 3. The `X.Y.Z` image is deployed to **staging** for validation.
 4. After CAB approval, the same `X.Y.Z` image is promoted to **production**.
 
-Rollback is manual: re-deploy a previous version tag (e.g., `1.1.4`).
+Rollback is manual: re-deploy a previous version tag (e.g., `1.1.0`).
 
 ---
 
@@ -146,10 +167,10 @@ The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://
 ### 7. CAB Meetings
 
 - CAB meetings are held before promoting a release to production.
-- By the time CAB reviews a release, the version has already been validated in staging.
 - CAB decisions explicitly approve a Git tag (e.g., `v1.2.0`) for production deployment.
 - The deployment process promotes the approved Docker image (`1.2.0`) to production.
 - CAB records link back to the tag and its changelog for traceability.
+- Once a staging environment exists, the version will have been validated there before CAB review.
 
 ---
 
