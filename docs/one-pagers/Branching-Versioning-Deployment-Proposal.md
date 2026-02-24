@@ -68,12 +68,11 @@ Git tags define deployment points.
 
 | Tag Type | Example | Purpose |
 |-----------|----------|----------|
-| Release | `v1.2.0` | Production-ready version |
-| Release Candidate | `v1.2.0-rc` | Staging pre-release |
-| Hot-fix | `v1.2.1` | Urgent patch or security update |
+| Release | `v1.2.0` | Stable version for staging and production |
+| Patch | `v1.2.1` | Bug fix or security update |
 
-Tags are created from commits on `main`.  
-These tags automatically trigger Docker builds and deployments for staging and production.  
+Tags are created from commits on `main`.
+These tags trigger Docker image builds. Both staging and production deploy from these version tags.
 Releases and CAB decisions refer to these tags for auditability.
 
 ---
@@ -137,7 +136,7 @@ This ensures critical fixes reach production fast, without merging unfinished fe
 |--------|-----------|
 | **Branching** | Trunk-based (`main` only, short-lived features) |
 | **Version Scheme** | Semantic Versioning (SemVer) |
-| **Git Tags** | `vX.Y.Z`, `vX.Y.Z-rc` |
+| **Git Tags** | `vX.Y.Z` |
 | **Docker Tags** | `:commit-sha`, `:vX.Y.Z` |
 | **Deployments** | GitOps or pipeline-driven promotion between environments |
 | **Hot-fixes** | Cherry-pick + patch release |
