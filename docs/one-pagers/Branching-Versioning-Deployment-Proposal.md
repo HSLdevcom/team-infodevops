@@ -157,13 +157,13 @@ The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://
 
 | Aspect | Decision |
 |--------|-----------|
-| **Branching** | Trunk-based (`main` only, short-lived features) |
-| **Version Scheme** | Semantic Versioning (SemVer) |
+| **Branching** | Trunk-based (`main` only, short-lived feature and `fix/` branches) |
+| **Version Scheme** | [Semantic Versioning 2.0.0](https://semver.org/spec/v2.0.0.html), manual bumps for now |
 | **Git Tags** | `vX.Y.Z` |
 | **Docker Tags** | `:edge`, `:X.Y.Z`, `:sha-<short-sha>` |
-| **Deployments** | GitOps or pipeline-driven promotion between environments |
-| **Hot-fixes** | Cherry-pick + patch release |
-| **CAB** | Mandatory before production |
+| **Environments** | Development (`edge`), staging (`X.Y.Z`), production (`X.Y.Z` after CAB) |
+| **Hot-fixes** | Short-lived `fix/` branch + patch tag |
+| **CAB** | Mandatory before production, reviews staging-validated releases |
 
 ---
 
