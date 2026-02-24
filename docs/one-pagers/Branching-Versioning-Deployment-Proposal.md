@@ -85,7 +85,7 @@ This version number is applied consistently across:
 - Deployment metadata
 - Release notes
 
-Version bumps are currently a **manual decision** by the developer or team when creating a release tag. Automating this process (e.g., via [Conventional Commits](https://www.conventionalcommits.org/) and [semantic-release](https://github.com/semantic-release/semantic-release)) is deferred to a future proposal.
+Version bumps are currently a **manual decision** by the developer or team when creating a release tag. The target is to adopt [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) for commit messages (tools like [commitizen](https://github.com/commitizen/cz-cli) can help enforce the format). Automating version bumps and changelogs based on Conventional Commits (e.g., via [semantic-release](https://github.com/semantic-release/semantic-release)) is deferred to a separate proposal.
 
 ---
 
@@ -181,7 +181,7 @@ If multiple environments need the same fix, each environment's current MINOR rel
 
 All **Dependabot** or manual security PRs target `main`. If the fix is urgent enough to bypass the normal release cycle, the `fix/` branch process above is used.
 
-The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://www.conventionalcommits.org/).
+The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/).
 
 ---
 
