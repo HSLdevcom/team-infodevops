@@ -211,13 +211,13 @@ The `fix/` prefix aligns with the `fix:` type in [Conventional Commits](https://
 
 | Aspect | Decision |
 |--------|-----------|
-| **Branching** | Trunk-based (`main` only, short-lived feature and `fix/` branches) |
-| **Version Scheme** | [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html): MINOR for releases, PATCH for hot-fixes only |
+| **Branching** | Trunk-based (`main` only, short-lived `feat/`, `fix/`, `refactor/`, and other branches) |
+| **Version Scheme** | Based on [SemVer 2.0.0](https://semver.org/spec/v2.0.0.html): MINOR for releases, PATCH for hot-fixes only |
 | **Git Tags** | `vX.Y.Z` (releases from `main`, patches from `fix/` branches) |
-| **Docker Tags** | `:edge`, `:X.Y.Z`, `:sha-<short-sha>` |
-| **Environments** | Development (`edge`) + production (`X.Y.Z`); staging (`X.Y.Z`) planned |
+| **Docker Tags** | `:edge`, `:X.Y.Z`, `:sha-<commit-sha>` |
+| **Environments** | Development (`edge`, manual pipeline trigger) + production (`X.Y.Z`); staging (`X.Y.Z`) and GitOps planned |
 | **Hot-fixes** | Short-lived `fix/` branch + PATCH tag, isolated per MINOR version |
-| **CAB** | Mandatory before production; staging validation planned |
+| **CAB** | Mandatory before production; staging validation and changelog traceability planned |
 
 ---
 
