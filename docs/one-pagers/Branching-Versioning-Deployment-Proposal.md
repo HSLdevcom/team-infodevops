@@ -50,7 +50,7 @@ We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https
 
 ### 2. Version Number Scheme
 
-Use [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0.html):  
+Based on [**Semantic Versioning 2.0.0 (SemVer)**](https://semver.org/spec/v2.0.0.html):  
 `MAJOR.MINOR.PATCH`
 
 | Level | Trigger | Example |
@@ -76,7 +76,7 @@ If instead both staging and production used PATCH for regular releases (e.g., st
 
 By reserving PATCH for hot-fixes, each MINOR release gets its own isolated patch space and no version conflicts can occur between environments.
 
-**SemVer compatibility:** The SemVer spec allows MINOR releases to include patch-level (bug fix) changes. In trunk-based development, releases from `main` almost always include at least some new functionality or improvement, making MINOR the appropriate bump. For the rare case of a release containing only bug fixes, bumping MINOR is a pragmatic choice that preserves the version space isolation described above.
+**SemVer deviation:** Our versioning is based on SemVer 2.0.0 with one deliberate deviation from rule 6. The spec says PATCH MUST be incremented when only backwards-compatible bug fixes are introduced. We bump MINOR instead, to preserve the version space isolation described above. This is defensible because: (1) SemVer was designed for libraries where consumers resolve version ranges — for deployed services, there is no dependency resolution; (2) rule 7 already allows MINOR releases to include patch-level changes, so the semantic signal is only slightly stretched; and (3) in trunk-based development, bug-fix-only releases from `main` are rare — nearly every release includes at least some new functionality.
 
 This version number is applied consistently across:
 
