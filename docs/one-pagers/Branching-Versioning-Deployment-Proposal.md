@@ -39,8 +39,8 @@ By adopting a consistent approach—centered around **trunk-based development**,
 Regarding terminology, ["A branch in Git is simply a lightweight movable pointer to one of these commits"](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell), not a sequence of commits. We use branches as follows:
 
 - **`main`** — the single long-lived branch (trunk). All integration happens here.
-- **Feature branches** — short-lived branches for work in progress. Merged to `main` via pull request and then deleted.
-- **`fix/` branches** — short-lived branches for urgent production fixes (see section 6). Deleted once the patch tag exists.
+- **Short-lived branches** — for features, bug fixes, refactoring, and other development work. Named by type of change, e.g. `feat/`, `fix/`, `refactor/` (aligned with [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) types). Merged to `main` via pull request and then deleted.
+- **`fix/` branches** (hot-fixes) — a special case: created from the commit that the production tag points to, not from `main` (see section 6). Deleted once the patch tag exists.
 
 We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https://trunkbaseddevelopment.com/)).
 
