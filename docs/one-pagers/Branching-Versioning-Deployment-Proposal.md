@@ -10,7 +10,8 @@ To improve development speed, consistency, and deployment safety, this proposal 
 - Deployment promotion between environments
 - Security hot-fixes
 - CAB approval process
-- Versioning of APIs and Pulsar topics
+
+API and Pulsar topic versioning are covered in a [separate proposal](./API-Pulsar-Versioning-Proposal.md).
 
 The design aims to reduce manual work, limit human errors, and ensure reliable traceability from commit → Docker image → environment deployment.
 
@@ -130,59 +131,6 @@ This ensures critical fixes reach production fast, without merging unfinished fe
 
 ---
 
-### 8. Versioning: Public/Partner APIs
-
-- Versioned through **URL prefixing**: `/api/v1/...`
-- Increment MAJOR version (`/v2/`) when breaking changes occur.
-- Deprecated versions remain accessible for a transition period.
-
-Example:
-/api/v1/users
-/api/v2/users
-
-
----
-
-### 9. Versioning: HSL-internal APIs
-
-- Internal APIs use the same SemVer approach but are coordinated via internal dependency management.
-- Changes are reflected in OpenAPI definitions.
-- Breaking changes → MAJOR version increment in `/internal/vX/` path.
-
-Example:
-/internal/v1/vehicle-status
-
-
----
-
-### 10. Versioning: Team-internal APIs
-
-- For intra-team development, explicit versioning may be skipped during early iteration.
-- Optional `/dev/` endpoint can be used to indicate unstable contracts.
-- Once stabilized, versioning follows the standard `/v1/` scheme.
-
-Example:
-/dev/metrics
-/v1/metrics
-
-
----
-
-### 11. Versioning: Pulsar Topics
-
-To support schema evolution in event-driven systems:
-
-- Add version suffix to topic names: `topic.v1`, `topic.v2`
-- Increment version when schema or serialization changes are not backward compatible.
-- Schema changes follow **SchemaVer** (`MAJOR-MINOR-PATCH`) for consistency with JSON schema management.
-
-Example:
-vehicle.events.v1
-vehicle.events.v2
-
-
----
-
 ## Summary
 
 | Aspect | Decision |
@@ -194,8 +142,6 @@ vehicle.events.v2
 | **Deployments** | GitOps or pipeline-driven promotion between environments |
 | **Hot-fixes** | Cherry-pick + patch release |
 | **CAB** | Mandatory before production |
-| **API Versioning** | `/v1/`, `/v2/`, internal `/internal/v1/`, optional `/dev/` |
-| **Pulsar Topics** | `topic.v1`, `topic.v2` using SchemaVer |
 
 ---
 
@@ -206,4 +152,3 @@ vehicle.events.v2
 - Reliable and traceable version history
 - Simplified hot-fix process
 - Transparent CAB-governed production releases
-- Clear API and message schema versioning across all integration points
