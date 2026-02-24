@@ -36,7 +36,13 @@ By adopting a consistent approach—centered around **trunk-based development**,
 
 ### 1. Git Branches
 
-We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https://trunkbaseddevelopment.com/)):
+A [Git branch is a lightweight movable pointer to a commit](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell), not a sequence of commits. We use branches as follows:
+
+- **`main`** — the single long-lived branch (trunk). All integration happens here.
+- **Feature branches** — short-lived branches for work in progress. Merged to `main` via pull request and then deleted.
+- **`fix/` branches** — short-lived branches for urgent production fixes (see section 6). Deleted once the patch tag exists.
+
+We adopt **trunk-based development** ([https://trunkbaseddevelopment.com/](https://trunkbaseddevelopment.com/)).
 
 [See Trunk Based Development Migration Plan Proposal](./Trunk-Based-Development-Migration-Plan-Proposal.md)
 
