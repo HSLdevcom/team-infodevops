@@ -36,7 +36,7 @@ By adopting a consistent approach—centered around **trunk-based development**,
 
 ### 1. Git Branches
 
-A [Git branch is a lightweight movable pointer to a commit](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell), not a sequence of commits. We use branches as follows:
+Regarding terminology, ["A branch in Git is simply a lightweight movable pointer to one of these commits"](https://git-scm.com/book/en/v2/Git-Branching-Branches-in-a-Nutshell), not a sequence of commits. We use branches as follows:
 
 - **`main`** — the single long-lived branch (trunk). All integration happens here.
 - **Feature branches** — short-lived branches for work in progress. Merged to `main` via pull request and then deleted.
