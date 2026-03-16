@@ -87,8 +87,72 @@ This gives confidence before merging that the change will apply cleanly.
 ### Cons
 
 - Adding a new repo requires updating `repos.conf` in the central repo
-- Requires cross-repo push permissions (PAT or GitHub App token)
+- Requires a dedicated GitHub App for cross-repo push permissions (see Authentication section below)
 - Central point of execution — if the script fails mid-run, some repos may be updated and others not (can be mitigated with idempotent re-runs)
+
+### Authentication: GitHub App
+
+The push model requires cross-repo write access. A **dedicated GitHub App** is the recommended mechanism — it avoids tying permissions to any individual developer account.
+
+**Why a GitHub App over a PAT**
+
+- Not tied to any individual — the app is an org-level resource
+- Minimal, explicitly scoped permissions (least-privilege)
+- Short-lived installation tokens (1 hour), automatically rotated
+- Clear bot identity in commits (`<app-name>[bot]`)
+- Full traceability via GitHub audit log
+
+**App permissions (least-privilege)**
+
+| Permission | Access | Why |
+|---|---|---|
+| Contents | Read & Write | Clone repos and push config commits |
+| Pull requests | Read & Write | Create PRs when branch protection blocks direct push |
+| Metadata | Read-only | Implicit with any app installation |
+
+**Installation scope**
+
+Two options:
+
+- **All org repos** (simplest) — new repos are automatically covered, no maintenance needed
+- **Selected repos only** (tighter control) — requires manually adding each new repo to the app's install list
+
+**Secrets management**
+
+Store two secrets as **org-level GitHub Actions secrets** in `transitdata-shared-workflows`:
+
+- `DEPENDABOT_SYNC_APP_ID` — the numeric ID of the GitHub App
+- `DEPENDABOT_SYNC_APP_PRIVATE_KEY` — the PEM private key generated during app creation
+
+**Token generation in the workflow**
+
+Use the [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) action to exchange the app credentials for a short-lived installation token:
+
+```yaml
+- uses: actions/create-github-app-token@v1
+  id: app-token
+  with:
+    app-id: ${{ secrets.DEPENDABOT_SYNC_APP_ID }}
+    private-key: ${{ secrets.DEPENDABOT_SYNC_APP_PRIVATE_KEY }}
+    owner: HSLdevcom
+
+- uses: actions/checkout@v4
+  with:
+    repository: HSLdevcom/${{ matrix.repo }}
+    token: ${{ steps.app-token.outputs.token }}
+```
+
+**Git identity**
+
+Commits appear as `<app-name>[bot] <DEPENDABOT_SYNC_APP_ID+<app-name>[bot]@users.noreply.github.com>`, making automated changes clearly distinguishable from human commits.
+
+**One-time setup steps**
+
+1. Create a new GitHub App under the HSLdevcom org (Settings → Developer settings → GitHub Apps)
+2. Set the permissions listed above (Contents R/W, Pull requests R/W)
+3. Install the app on the org (all repos or selected repos)
+4. Generate a private key and note the App ID
+5. Store `DEPENDABOT_SYNC_APP_ID` and `DEPENDABOT_SYNC_APP_PRIVATE_KEY` as org-level Actions secrets in `transitdata-shared-workflows`
 
 ---
 
@@ -152,8 +216,12 @@ Each repo that needs centralized configuration runs a scheduled GitHub Action (v
 - **Delay**: Changes propagate on the schedule interval (e.g. up to 1 week if weekly), not immediately
   - Mitigated by manual `workflow_dispatch` trigger when urgency is needed
 - Requires initial per-repo setup (adding the caller workflow file) — though this is a one-time, small change
-- Each repo needs appropriate permissions for the workflow to commit/push
+- Each repo needs appropriate permissions for the workflow to commit/push (though the default `GITHUB_TOKEN` is sufficient — no extra secrets or app setup required)
 - Slightly more moving parts than a single script
+
+### Authentication note
+
+The pull model has a simpler auth story: each repo's workflow uses its own `GITHUB_TOKEN` (automatically provided by GitHub Actions) to push to itself. No dedicated GitHub App, PAT, or org-level secrets are needed. If the central template repo is public (or within the same org), fetching templates requires no extra credentials either.
 
 ---
 
@@ -169,6 +237,6 @@ Each repo that needs centralized configuration runs a scheduled GitHub Action (v
 | **Remembering to run** | Automatic on merge | Automatic on schedule |
 | **New repo onboarding** | Add line to `repos.conf` | Add workflow file to repo |
 | **Existing patterns** | New script | Extends existing shared-workflows pattern |
-| **Cross-repo permissions** | Script needs PAT/token for all repos | Each repo's GITHUB_TOKEN may suffice (if pushing to own repo) |
+| **Cross-repo permissions** | Dedicated GitHub App (Contents + PRs write); no personal PAT needed | Each repo's `GITHUB_TOKEN` suffices (pushing to own repo) |
 | **Pre-merge validation** | Dry-run on PR with summary report | No built-in validation |
 | **Per-repo customization** | Supported via dependabot-local.yml | Supported via dependabot-local.yml |
