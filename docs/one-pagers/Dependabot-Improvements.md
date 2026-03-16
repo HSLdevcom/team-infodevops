@@ -2,9 +2,9 @@
 
 ## Context
 
-The transitdata repositories currently have basic Dependabot configs (monthly schedule, `target-branch: develop`, no grouping, no cooldown, no Docker tracking). The goal is to reduce PR noise, gain supply-chain attack resilience via cooldown, and keep timely updates — applied consistently across all repos.
+The transitdata repositories currently have basic Dependabot configs (monthly schedule, no grouping, no cooldown, no Docker tracking). The goal is to reduce PR noise, gain supply-chain attack resilience via cooldown, and keep timely updates — applied consistently across all repos.
 
-Default branch is `main` across all repos. Existing configs use `target-branch: "develop"` (gitflow pattern).
+Default branch is `main` across all repos. Dependabot targets the default branch by default, so no `target-branch` override is needed.
 
 ## Approach: Alternative 2 Grouping + Cooldown + Multi-Ecosystem
 
@@ -16,8 +16,8 @@ For the primary package ecosystem (maven/gradle/pip):
 - **Major production deps**: ungrouped → individual PRs (require changelog review)
 
 For infrastructure ecosystems (github-actions + docker):
-- **`infrastructure`** group (multi-ecosystem): minor + patch updates for both github-actions and docker combined into a single PR
-- **Major updates**: ungrouped → individual PRs
+- **`hsldevcom-infra`** group (multi-ecosystem): all updates for HSLdevcom-originating docker and github-actions packages combined into a single PR, using `patterns` to match only `hsldevcom/*` / `HSLdevcom/*` packages
+- **Non-HSLdevcom packages**: grouped per-ecosystem for minor+patch, with majors ungrouped → individual PRs
 
 ### Cooldown
 
@@ -32,26 +32,81 @@ cooldown:
 
 `default-days: 30` serves as fallback for packages that don't follow semver (e.g., some Docker images).
 
-**Security updates are exempt from cooldown** because `target-branch: develop` is a non-default branch. Per the docs: cooldown does not affect security updates when `target-branch` points to a non-default branch.
+**Security updates bypass cooldown** on the default branch. Per [GitHub docs](https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file#cooldown), cooldown does not delay security updates when PRs target the default branch.
 
 ### Other Settings
 
 - `open-pull-requests-limit: 20` on all ecosystem entries
-- `schedule.interval: "monthly"` — unchanged
-- `target-branch: "develop"` — unchanged
+- `schedule.interval: "daily"` — with auto-merge enabled, no extra delay is needed on top of cooldown
 
-## Template Configurations
+## Template Configuration
 
-### Maven repos
+A single unified template is used for all repos. Dependabot ignores ecosystems that don't apply to a given repo, so one template everywhere simplifies centralized management.
 
 ```yaml
 version: 2
+multi-ecosystem-groups:
+  hsldevcom-infra:
+    schedule:
+      interval: "daily"
+    updates:
+      - package-ecosystem: "docker"
+        directory: "/"
+        patterns: ["hsldevcom/*"]
+        multi-ecosystem-group: "hsldevcom-infra"
+      - package-ecosystem: "github-actions"
+        directory: "/"
+        patterns: ["HSLdevcom/*"]
+        multi-ecosystem-group: "hsldevcom-infra"
 updates:
   - package-ecosystem: "maven"
     directory: "/"
     schedule:
-      interval: "monthly"
-    target-branch: "develop"
+      interval: "daily"
+    open-pull-requests-limit: 20
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+      semver-minor-days: 60
+      semver-patch-days: 30
+    groups:
+      dev-all:
+        dependency-type: "development"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+      prod-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+      semver-minor-days: 60
+      semver-patch-days: 30
+    groups:
+      dev-all:
+        dependency-type: "development"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+      prod-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "daily"
     open-pull-requests-limit: 20
     cooldown:
       default-days: 30
@@ -73,8 +128,7 @@ updates:
   - package-ecosystem: "docker"
     directory: "/"
     schedule:
-      interval: "monthly"
-    target-branch: "develop"
+      interval: "daily"
     open-pull-requests-limit: 20
     cooldown:
       default-days: 30
@@ -82,15 +136,14 @@ updates:
       semver-minor-days: 60
       semver-patch-days: 30
     groups:
-      infrastructure:
+      docker-minor-patch:
         update-types:
           - "minor"
           - "patch"
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "monthly"
-    target-branch: "develop"
+      interval: "daily"
     open-pull-requests-limit: 20
     cooldown:
       default-days: 30
@@ -98,55 +151,23 @@ updates:
       semver-minor-days: 60
       semver-patch-days: 30
     groups:
-      infrastructure:
+      actions-minor-patch:
         update-types:
           - "minor"
           - "patch"
 ```
 
-The `infrastructure` group name shared between `docker` and `github-actions` enables multi-ecosystem grouping — their minor+patch updates are combined into a single PR.
-
-### Gradle repos (e.g. transitlog-apc-sink, transitlog-hfp-csv-sink)
-
-Same as Maven template but replace `"maven"` with `"gradle"`.
-
-### Python repos (e.g. transitdata-monitor-data-collector)
-
-Same structure but replace `"maven"` with `"pip"`.
-
-### Shared-workflows repo (e.g. transitdata-shared-workflows)
-
-```yaml
-version: 2
-updates:
-  - package-ecosystem: "github-actions"
-    directory: "/"
-    schedule:
-      interval: "monthly"
-    open-pull-requests-limit: 20
-    cooldown:
-      default-days: 30
-      semver-major-days: 90
-      semver-minor-days: 60
-      semver-patch-days: 30
-    groups:
-      infrastructure:
-        update-types:
-          - "minor"
-          - "patch"
-```
-
-No `target-branch` (targets default `main`). No docker or package ecosystem entries.
+The `multi-ecosystem-groups` block groups HSLdevcom-originating docker and github-actions updates into a single PR, since new shared Dockerfile and shared workflow versions are often related. Non-HSLdevcom docker and github-actions updates are handled by their respective per-ecosystem groups (`docker-minor-patch`, `actions-minor-patch`) for minor+patch, with majors ungrouped as individual PRs.
 
 ## Changes
 
 ### Repos with existing dependabot.yml
 
-Add grouping, cooldown, docker ecosystem, and bump PR limit to 20. Use the appropriate template (Maven, Gradle, or Python) based on the repo's primary ecosystem.
+Overwrite with the unified template above. This replaces any existing grouping, schedule, and ecosystem configuration.
 
 ### Repos without dependabot.yml
 
-Create a new `.github/dependabot.yml` using the appropriate template. Use `target-branch: "develop"` for service repos. For workflow-only repos (like transitdata-shared-workflows), omit `target-branch` so PRs target the default `main` branch.
+Create a new `.github/dependabot.yml` using the unified template above.
 
 ### Skip
 
