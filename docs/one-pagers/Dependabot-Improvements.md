@@ -10,7 +10,7 @@ Default branch is `main` across all repos. Dependabot targets the default branch
 
 ### Grouping Strategy
 
-For the primary package ecosystem (maven/gradle/pip):
+For the primary package ecosystem (maven/gradle/npm/pip):
 - **`dev-all`** group: all update types for development dependencies → one PR
 - **`prod-minor-patch`** group: minor + patch for production dependencies → one PR
 - **Major production deps**: ungrouped → individual PRs (require changelog review)
@@ -103,6 +103,28 @@ updates:
         update-types:
           - "minor"
           - "patch"
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 20
+    cooldown:
+      default-days: 30
+      semver-major-days: 90
+      semver-minor-days: 60
+      semver-patch-days: 30
+    groups:
+      dev-all:
+        dependency-type: "development"
+        update-types:
+          - "major"
+          - "minor"
+          - "patch"
+      prod-minor-patch:
+        dependency-type: "production"
+        update-types:
+          - "minor"
+          - "patch"
   - package-ecosystem: "pip"
     directory: "/"
     schedule:
@@ -135,6 +157,10 @@ updates:
       semver-major-days: 90
       semver-minor-days: 60
       semver-patch-days: 30
+    ignore:
+      - dependency-name: "eclipse-temurin/*"
+        # Ignore non-LTS versions; extend as the release schedule evolves
+        versions: ["26", "27", "28", "30", "31", "32", "34", "35", "36"]
     groups:
       docker-minor-patch:
         update-types:
@@ -169,6 +195,3 @@ Overwrite with the unified template above. This replaces any existing grouping, 
 
 Create a new `.github/dependabot.yml` using the unified template above.
 
-### Skip
-
-Repos that are purely documentation or deployment configs (no package dependencies) don't need Dependabot.
