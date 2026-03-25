@@ -12,7 +12,7 @@ Dependabot only supports a single `.github/dependabot.yml` per repo — no nativ
 - `.github/dependabot-local.yml` — **optional, repo-specific additions**. Manually maintained.
 
 The sync process:
-1. Fetches the base template (e.g. `maven.yml`)
+1. Fetches the unified base template
 2. If `.github/dependabot-local.yml` exists, merges its `updates` entries into the base using `yq`
 3. Writes the combined result to `.github/dependabot.yml`
 
@@ -25,7 +25,7 @@ updates:
     directory: "/"
     schedule:
       interval: "monthly"
-    target-branch: "develop"
+    target-branch: "main"
 ```
 
 The merge concatenates the `updates` lists — base entries first, then local entries. `yq` is lightweight and available on GitHub Actions runners.
@@ -38,14 +38,14 @@ A script runs from a central location (locally or in CI) and pushes the correct 
 
 ### How it works
 
-1. Templates (one per ecosystem: maven, gradle, pip, github-actions-only) and a repo manifest (`repos.conf`) live in a central repo (e.g. `transitdata-shared-workflows`)
+1. A single unified template (`dependabot.yml`) and a repo manifest (`repos.conf`) live in a central repo (e.g. `transitdata-shared-workflows`). Dependabot ignores ecosystems that don't apply to a given repo, so one template everywhere simplifies management.
 2. Two triggers via GitHub Actions:
    - **On merge to main**: Automatically runs the distribution to all repos
    - **On PR (dry-run)**: Validates the change before merging — reports for each repo whether it can be applied cleanly, whether PRs would be needed, and flags any merge conflicts
 3. For each repo in the manifest:
    - Shallow clone the repo
-   - Check out the target branch (`develop` or `main`)
-   - Copy the appropriate template to `.github/dependabot.yml`
+   - Check out the default branch (`main`)
+   - Copy the unified template to `.github/dependabot.yml`
    - If `.github/dependabot-local.yml` exists, merge it into the result using `yq`
    - If no diff → skip
    - If diff and the file applies cleanly → commit and push directly
@@ -57,17 +57,13 @@ A script runs from a central location (locally or in CI) and pushes the correct 
 ```
 dependabot-config/
 ├── distribute.sh
-├── templates/
-│   ├── maven.yml
-│   ├── gradle.yml
-│   ├── pip.yml
-│   └── github-actions-only.yml
-└── repos.conf            # repo-name:template mapping
+├── dependabot.yml        # single unified template for all repos
+└── repos.conf            # list of target repo names
 ```
 
 ### Validation on PR (dry-run)
 
-When a PR modifies templates or `repos.conf`, a CI workflow runs the script in dry-run mode and posts a summary comment on the PR:
+When a PR modifies the template or `repos.conf`, a CI workflow runs the script in dry-run mode and posts a summary comment on the PR:
 - Which repos would be updated
 - Which repos are already up-to-date (no diff)
 - Which repos would need a PR due to merge conflicts or branch protection
@@ -79,7 +75,7 @@ This gives confidence before merging that the change will apply cleanly.
 
 - Simple to understand — one script, automatic on merge
 - Validation before merge via dry-run on PRs
-- No per-repo setup needed beyond being listed in `repos.conf`
+- No per-repo setup needed beyond being listed in `repos.conf` (just a repo name, no template mapping)
 - Direct push when possible (no unnecessary PRs for a config-only file)
 - Falls back to PR creation on merge conflicts or branch protection
 - Can also be run locally for debugging
@@ -162,23 +158,13 @@ Each repo that needs centralized configuration runs a scheduled GitHub Action (v
 
 ### How it works
 
-1. Templates live in the central repo (same structure as Approach A)
+1. The single unified template lives in the central repo (same structure as Approach A)
 2. A reusable workflow is defined in `transitdata-shared-workflows`:
    ```yaml
    # .github/workflows/sync-dependabot-config.yml
    name: Sync Dependabot config
    on:
      workflow_call:
-       inputs:
-         template:
-           description: 'Template name (maven, gradle, pip, github-actions-only)'
-           required: true
-           type: string
-         target-branch:
-           description: 'Branch to commit to'
-           required: false
-           default: 'develop'
-           type: string
    ```
 3. Each consuming repo adds a minimal workflow:
    ```yaml
@@ -191,12 +177,10 @@ Each repo that needs centralized configuration runs a scheduled GitHub Action (v
    jobs:
      sync:
        uses: HSLdevcom/transitdata-shared-workflows/.github/workflows/sync-dependabot-config.yml@main
-       with:
-         template: maven
        secrets: inherit
    ```
 4. The shared workflow:
-   - Fetches the template from the central repo (via `gh api` or raw URL)
+   - Fetches the unified template from the central repo (via `gh api` or raw URL)
    - If `.github/dependabot-local.yml` exists in the repo, merges it into the template using `yq`
    - Compares with current `.github/dependabot.yml`
    - If changed: commits and pushes directly to the target branch
@@ -206,7 +190,7 @@ Each repo that needs centralized configuration runs a scheduled GitHub Action (v
 
 - **Self-healing**: Repos automatically pick up changes on schedule — no one needs to remember to run anything
 - **Decentralized execution**: Each repo is responsible for its own sync; failure in one repo doesn't affect others
-- Adding the workflow to a new repo is a one-time, minimal setup (3-line workflow file with template parameter)
+- Adding the workflow to a new repo is a one-time, minimal setup (short workflow file, no parameters needed)
 - The shared workflow itself is distributed via the existing shared-workflows mechanism the team already uses
 - Each repo's sync schedule and template choice are visible in its own codebase
 - Workflow dispatch allows manual trigger for immediate sync
@@ -231,7 +215,7 @@ The pull model has a simpler auth story: each repo's workflow uses its own `GITH
 |--------|--------------------------|--------------------------------------|
 | **Propagation** | Automatic on merge to main | Scheduled (automatic) + manual dispatch |
 | **Latency** | Immediate on merge | Up to schedule interval (e.g. 1 week) |
-| **Per-repo setup** | None (just add to `repos.conf`) | One-time: add ~10-line workflow file |
+| **Per-repo setup** | None (just add repo name to `repos.conf`) | One-time: add ~10-line workflow file |
 | **Failure isolation** | One script, all-or-nothing per run | Each repo independent |
 | **Visibility** | Central — only in the script repo | Distributed — each repo shows its sync workflow and config |
 | **Remembering to run** | Automatic on merge | Automatic on schedule |
