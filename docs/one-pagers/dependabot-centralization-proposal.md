@@ -12,7 +12,7 @@ The Action is maintained by a GitHub employee and supports syncing files (includ
 
 ## How it works
 
-1. A single canonical `dependabot.yml` lives in a central repo (e.g. `transitdata-shared-workflows`). Dependabot ignores ecosystems that don't apply to a given repo, so one template everywhere simplifies management.
+1. A single canonical `dependabot.yml` lives in a central repo (e.g. `infodevops-github-policy`). Dependabot ignores ecosystems that don't apply to a given repo, so one template everywhere simplifies management.
 2. A GitHub Actions workflow in the central repo runs the Action with two triggers:
    - **On merge to main**: Immediately syncs the config to all target repos
    - **On schedule (daily cron)**: Catches newly created repos and corrects drift
@@ -56,7 +56,7 @@ Option B is preferred — it automatically includes new repos when the `team` cu
 ### Central repo structure
 
 ```
-dependabot-config/
+infodevops-github-policy/
 ├── .github/
 │   └── workflows/
 │       └── sync-dependabot-config.yml
@@ -183,7 +183,7 @@ Install on **all org repos** (simplest) — new repos are automatically covered,
 
 **Secrets management**
 
-Store two secrets as **org-level GitHub Actions secrets** in `transitdata-shared-workflows`:
+Store two secrets as **org-level GitHub Actions secrets** in `infodevops-github-policy`:
 
 - `DEPENDABOT_SYNC_APP_ID` — the numeric ID of the GitHub App
 - `DEPENDABOT_SYNC_APP_PRIVATE_KEY` — the PEM private key generated during app creation
@@ -207,5 +207,5 @@ Use the [`actions/create-github-app-token`](https://github.com/actions/create-gi
 2. Set the permissions listed above (Contents R/W, Pull requests R/W)
 3. Install the app on the org (all repos)
 4. Generate a private key and note the App ID
-5. Store `DEPENDABOT_SYNC_APP_ID` and `DEPENDABOT_SYNC_APP_PRIVATE_KEY` as org-level Actions secrets in `transitdata-shared-workflows`
+5. Store `DEPENDABOT_SYNC_APP_ID` and `DEPENDABOT_SYNC_APP_PRIVATE_KEY` as org-level Actions secrets in `infodevops-github-policy`
 6. Ensure auto-merge is enabled in target repo settings (can be enforced via the same Action)
