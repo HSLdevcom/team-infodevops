@@ -2,7 +2,7 @@
 
 ## What?
 
-HSL InfoDevOps manages 40+ microservices across multiple repos. These services were built
+HSL InfoDevOps manages 100+ microservices across multiple repos. These services were built
 independently and have accumulated inconsistencies in build tooling, CI/CD pipelines,
 Dockerfiles, Java/Node versions, and branch strategies.
 
