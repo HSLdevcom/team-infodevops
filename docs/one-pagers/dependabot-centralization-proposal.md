@@ -59,7 +59,7 @@ Option B is preferred — it automatically includes new repos when the `team` cu
 infodevops-github-policy/
 ├── .github/
 │   └── workflows/
-│       └── sync-dependabot-config.yml
+│       └── sync.yml
 ├── settings-config.yml                          # repo targeting rules
 └── config/
     └── dependabot/
@@ -70,7 +70,7 @@ infodevops-github-policy/
 ### Example workflow
 
 ```yaml
-# .github/workflows/sync-dependabot-config.yml
+# .github/workflows/sync.yml
 name: Sync Dependabot config
 on:
   push:
@@ -78,7 +78,7 @@ on:
     paths:
       - 'config/dependabot/**'
       - 'settings-config.yml'
-      - '.github/workflows/sync-dependabot-config.yml'
+      - '.github/workflows/sync.yml'
   schedule:
     - cron: '0 6 * * *'  # daily at 06:00 UTC
   workflow_dispatch:
@@ -103,57 +103,20 @@ jobs:
           repositories-file: 'settings-config.yml'
           dependabot-pr-title: 'chore: sync dependabot.yml from central config'
           dry-run: ${{ github.event_name == 'pull_request' }}
-
-      - name: Auto-merge created PRs
-        if: github.event_name != 'pull_request'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-        run: |
-          # Find open PRs created by the app across target repos
-          PR_TITLE="chore: sync dependabot.yml from central config"
-          REPOS=$(yq '.rules[].selector.repos // [] | .[]' settings-config.yml 2>/dev/null)
-          # Also get repos from custom property selector via API
-          REPOS="$REPOS $(gh api "/orgs/HSLdevcom/repos?custom_property_name=team&custom_property_value=infodevops&per_page=100" --jq '.[].full_name')"
-
-          for REPO in $REPOS; do
-            PR_NUMBER=$(gh pr list --repo "$REPO" --search "\"$PR_TITLE\" is:open" --json number --jq '.[0].number' 2>/dev/null)
-            if [ -n "$PR_NUMBER" ]; then
-              echo "Auto-merging $REPO#$PR_NUMBER"
-              gh pr merge "$PR_NUMBER" --repo "$REPO" --squash --auto
-            fi
-          done
 ```
 
 ---
 
 ## Auto-merge
 
-With many repositories, manually merging sync PRs is not feasible. The workflow handles this automatically:
+With many repositories, manually merging sync PRs is not feasible. Rather than handle this from the policy repo workflow, the merging logic lives in each microservice repo. Two pieces are bootstrapped into every microservice as part of the harmonization effort (and then kept in sync via this same `bulk-github-repo-settings-sync-action`):
 
-1. The sync step creates PRs in repos where `dependabot.yml` differs from the canonical version.
-2. A follow-up step finds these PRs by title and enables **GitHub auto-merge** (`gh pr merge --auto --squash`) on each.
-3. If the repo has required status checks, the PR merges automatically once checks pass. If no checks are required, the PR merges immediately.
+1. **Repo settings**: auto-merge enabled (Settings > General > Allow auto-merge) and the branch protection rule set to auto-merge once CI passes and the PR is approved. Enforced across all repos via `auto-merge: true` on the sync action.
+2. **Auto-approve workflow**: a canonical workflow (e.g. `.github/workflows/auto-approve-github-policy.yml`) that auto-approves PRs opened by the policy GitHub App. This is itself one of the canonical files distributed by the policy repo.
 
-**Prerequisites**:
-- **Auto-merge must be enabled** in each repo's settings (Settings > General > Allow auto-merge). The same `bulk-github-repo-settings-sync-action` can enforce this setting across all repos: `auto-merge: true`.
-- The GitHub App token needs sufficient permissions (Contents + Pull requests R/W, already covered).
+With those in place, a sync PR opened in a microservice is auto-approved by the workflow, passes CI, and is auto-merged by the repo setting — no orchestration needed from the policy repo workflow.
 
-If a repo has required reviews, the PR won't auto-merge until approved. For config-only changes from a trusted bot, consider either:
-- Exempting the app from required reviews via a branch ruleset bypass
-- Using a ruleset that only requires reviews for non-`.github/dependabot.yml` paths
-
----
-
-## Validation
-
-Before distributing, the workflow validates the Dependabot YAML against the [official JSON schema](https://json.schemastore.org/dependabot-2.0.json). Options:
-
-- [`marocchino/validate-dependabot`](https://github.com/marocchino/validate-dependabot) — GitHub Action that validates `dependabot.yml`
-- [`@bugron/validate-dependabot-yaml`](https://www.npmjs.com/package/@bugron/validate-dependabot-yaml) — npm CLI tool
-
-There is no official Dependabot CLI validator ([open feature request since 2022](https://github.com/dependabot/dependabot-core/issues/4605)). Schema validation catches structural errors (typos, invalid keys, wrong types). Beyond that, Dependabot silently ignores invalid config entries — it won't break anything, it just won't run those rules.
-
-The Action also supports **dry-run mode** — when triggered on a PR to the central repo, it reports what would change without actually creating PRs. This provides pre-merge validation.
+**Bootstrap caveat**: the first time a repo joins the system, the auto-approve workflow has to land before sync PRs can auto-merge. Either bootstrap the repo with the canonical workflow file first, or approve the initial sync PR manually.
 
 ---
 
