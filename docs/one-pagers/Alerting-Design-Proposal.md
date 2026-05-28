@@ -57,26 +57,25 @@ dashboards periodically), transient blips shorter than the `for` duration, or me
 
 ### 2. Technology: Azure Monitor Prometheus Alert Rules vs. Grafana Alerting
 
-We use **Azure Monitor Prometheus alert rules**, not Grafana-managed alerting. Both are viable, but Azure Monitor is the
-better fit for our setup.
+We use **Azure Monitor Prometheus alert rules**, not Grafana-managed alerting. Both are viable; three dimensions drove
+the call.
 
-| Aspect                              | Azure Monitor Prometheus Rules                                                                                     | Grafana-Managed Alerting                                      |
-|-------------------------------------|--------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------|
-| **Rule evaluation**                 | Runs on Azure Monitor infrastructure, independent of Grafana                                                       | Runs inside the Grafana instance                              |
-| **Availability**                    | Rules persist and evaluate even if Grafana is down or restarting                                                   | If Grafana goes down, alerting stops                          |
-| **Notification routing**            | Azure Action Groups: built-in Slack, email, SMS, webhook, Logic Apps, Functions                                    | Grafana contact points: email, Slack webhook, PagerDuty, etc. |
-| **Suppression / maintenance**       | Azure Monitor alert suppression rules (scheduled, scope-based)                                                     | Grafana silences and mute timings                             |
-| **IaC support**                     | Terraform `azurerm_monitor_alert_prometheus_rule_group`, ARM/Bicep, Azure CLI                                      | Grafana provisioning YAML, Terraform grafana provider         |
-| **Management UI**                   | Azure Portal (alerts blade, alert history, smart detection)                                                        | Grafana Alerting UI                                           |
-| **Integration with existing setup** | Aligns with existing Action Groups (`infosys-send-to-slack`, Solita cross-sub group) already used by legacy alerts | Would require setting up new contact points                   |
-| **Rule format**                     | Standard Prometheus alerting rule syntax (PromQL `expr`, `for`, `labels`, `annotations`)                           | Grafana-specific rule model (conditions, queries, folders)    |
+**Deciding factors:**
 
-**Decision: Azure Monitor Prometheus alert rules** because:
+| Dimension                  | Why it matters for us                                                                                                                                                                                                                          |
+|----------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Rule format**            | Standard PromQL with `expr` / `for` / `labels` / `annotations`. Portable across clusters and clouds, no Grafana-specific rule model to learn or migrate later. Grafana-managed alerts use a Grafana-specific conditions/queries/folders model. |
+| **Reuse of Action Groups** | The existing Slack action groups (`infosys-send-to-slack[-dev]`) and the cross-subscription Solita vendor group are already wired up by the legacy alerts. Grafana-managed alerting would require setting up parallel contact points.          |
+| **IaC consistency**        | Deployed via Terraform (`azurerm_monitor_alert_prometheus_rule_group`) in the same module pattern as our other Azure resources in `azure-infra-aks`. Grafana provisioning would introduce a second IaC path.                                   |
 
-- Alert evaluation is decoupled from Grafana availability
-- Existing Action Groups (including the cross-subscription Solita vendor group) can be reused directly
-- Standard Prometheus rule syntax is portable and well-documented
-- Aligns with the existing Terraform-managed infrastructure pattern (`azure-infra-aks` repo)
+**Other differences** (not deciding factors, but worth knowing):
+
+| Aspect                    | Azure Monitor Prometheus Rules                                 | Grafana-Managed Alerting                                                                  |
+|---------------------------|----------------------------------------------------------------|-------------------------------------------------------------------------------------------|
+| Rule evaluation           | Runs on Azure Monitor infrastructure, independent of Grafana   | Runs inside the Grafana instance                                                          |
+| Availability              | Rules evaluate even if Grafana is down                         | Tied to Grafana availability. Azure Managed Grafana is HA, so the practical gap is small. |
+| Suppression / maintenance | Azure Monitor alert suppression rules (scheduled, scope-based) | Grafana silences and mute timings                                                         |
+| Management UI             | Azure Portal (alerts blade, alert history, smart detection)    | Grafana Alerting UI                                                                       |
 
 ---
 
