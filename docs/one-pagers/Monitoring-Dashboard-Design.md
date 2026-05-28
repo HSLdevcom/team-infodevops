@@ -72,6 +72,8 @@ These currently power Azure-based alerting. The new Prometheus + Grafana stack s
 4. **Data-flow ordering** -- panels ordered top-to-bottom matching the direction of data flow: data sources first, then earliest Pulsar topics, then downstream processors, then output
 5. **Alerts link to dashboards** -- every alert rule includes a `dashboard_url` + `panel_id` annotation
 6. **Drill-down hierarchy** -- Golden Signals -> domain dashboard -> per-service detail
+7. **One dashboard set per environment** -- dev, staging, and prod each have their own copy of the dashboards, matching the existing per-environment Grafana deployment. No cross-environment aggregation.
+8. **Environment identification via color** -- use the Colorbrewer 3-class RdYlBu palette (`#fc8d59` for prod, `#ffffbf` for staging, `#91bfdb` for dev -- colorblind-safe) for environment indicators on dashboards (e.g., header banner, dashboard title accent, or quick-link panel). Not required as a full-page background; the goal is that the active environment is visible at a glance.
 
 ---
 
@@ -526,7 +528,7 @@ Label: `source` = `pubtrans-roi-arrival`, `pubtrans-roi-departure`, `pubtrans-do
 
 These metrics do not exist today and need to be instrumented in the microservices or in transitdata-metrics-exporter.
 
-### 6.1GTFS-RT HTTP Request Duration
+### 6.1 GTFS-RT HTTP Request Duration
 
 **Where:** transitdata-metrics-exporter (already makes HTTP requests to GTFS-RT endpoints)
 
@@ -536,7 +538,7 @@ These metrics do not exist today and need to be instrumented in the microservice
 
 **Implementation:** Record the time between HTTP request start and response received in `GtfsRtMetricsExporter`. Micrometer `Timer` or manual `DistributionSummary` on elapsed time.
 
-### 6.2Database Polling Metrics
+### 6.2 Database Polling Metrics
 
 **Where:** Each database-polling microservice (`transitdata-pubtrans-arrival-source`, `transitdata-pubtrans-departure-source`, `transitdata-omm-cancellation-source`, `transitdata-omm-alert-source`, `transitdata-stop-cancellation-source`, `transitdata-metro-ats-cancellation-source`)
 
@@ -550,7 +552,7 @@ These metrics do not exist today and need to be instrumented in the microservice
 
 **Decision needed:** Instrument each microservice individually, or create a shared library in `transitdata-common`? Recommendation: add a metrics utility to `transitdata-common` and use it from each service. This keeps the Prometheus endpoint setup and metric definitions consistent.
 
-### 6.3End-to-End Latency Metrics
+### 6.3 End-to-End Latency Metrics
 
 **Where:** Output-stage microservices that can compute the difference between the original event timestamp and the current time.
 
@@ -564,7 +566,7 @@ Pipelines:
 
 **Implementation:** The Pulsar message publish timestamp or the embedded event timestamp from the protobuf message can serve as the start time. Compute `System.currentTimeMillis() - eventTimestamp` at the output processor.
 
-### 6.4Logged Error Counts
+### 6.4 Logged Error Counts
 
 **Option A (recommended):** Use Prometheus log-based metrics via a log exporter sidecar (e.g., `mtail` or `promtail` with metrics).
 
@@ -619,9 +621,9 @@ Pipelines:
 ## 8. Open Questions
 
 1. **Backlog thresholds:** What Pulsar backlog counts should trigger warnings? Need to observe baseline during normal operations and set thresholds at e.g., 2x-5x normal.
-2. **GTFS-RT feed age thresholds:** What's an acceptable timestamp age? 60s? 120s? This varies by feed type (service alerts update less frequently than vehicle positions).
-3. **Notification channels:** Where should alerts be sent? Slack channel? PagerDuty? Email?
+2. **GTFS-RT feed age thresholds:** For vehicle positions and trip updates, alert when feed age exceeds **5--10 seconds** (exact threshold to be tuned against the monitoring polling cycle and observed request delay). Thresholds for slower-updating feeds (service alerts and similar) remain to be set against their normal cadence.
+3. **Notification channels:** Deferred to a separate proposal.
 4. **Pulsar topic completeness:** Several topic names need to be confirmed from the cluster -- EKE raw/deduplicated topics, cancellation internal topics, and service alert topics are referenced in the architecture but not present in the current Pulsar Overview dashboard.
-5. **Log-based error metrics approach:** Option A (sidecar/promtail) vs Option B (Logback counter appender) -- which is preferred? Option A is less invasive but requires sidecar containers. Option B is simpler but requires touching every microservice.
-6. **Recording rules:** Should we create Prometheus recording rules for expensive queries (e.g., baseline calculations for anomaly detection)?
-7. **Dashboard access:** Should dashboards be public (no login) or restricted? Who needs edit access vs. view access?
+5. **Log-based error metrics approach:** Use **Option A** (sidecar/promtail). Sidecars can be written once into the central deployment repo and copy-pasted across services, so the per-service maintenance burden is low compared to touching every microservice as Option B would require.
+6. **Recording rules:** Decide during implementation. Start without them; add recording rules later only if specific queries prove expensive.
+7. **Dashboard access:** Edit access for the team; view access for HSL employees and developers. A simplified public dashboard is out of scope here and can be a separate proposal.
