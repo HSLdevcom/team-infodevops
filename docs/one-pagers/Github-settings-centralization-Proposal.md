@@ -112,17 +112,26 @@ With centralized governance:
 
 Following a PR review recommendation, we evaluated the [Bulk GitHub Repository Settings Sync](https://github.com/marketplace/actions/bulk-github-repository-settings-sync) marketplace action as an alternative to building a custom TypeScript tool from scratch.
 
-**Decision: use the marketplace action as the foundation, build a thin custom script only for the gaps.**
+**Decision: use the marketplace action as the foundation for settings enforcement, build a thin custom script for the gaps. File sync is explicitly out of scope for third-party tooling.**
 
-The action covers everything in our original scope except GitHub Actions policies, team permissions, and HSL-specific compliance checks. Using it eliminates the need to build and maintain what is already a well-tested, actively maintained open-source tool.
+The action covers the pure settings and rulesets part of our scope. Using it eliminates the need to build and maintain what is already a well-tested, actively maintained open-source tool.
+
+#### Trust and supply chain
+
+This central management repository has write access to every HSL repository's branch protection, security settings, and CI/CD configuration. Any action or script running here is a high-value supply chain target. Therefore:
+
+- **Third-party tools must not be used for file propagation** (copying workflow files, `dependabot.yml`, CODEOWNERS, etc. to other repos). This is analogous to tools like [Repo File Sync Action](https://github.com/marketplace/actions/repo-file-sync-action) which we explicitly do not trust for this purpose. The same risk applies to the file sync capability of the marketplace action — it is **not used** here.
+- **The marketplace action is used solely for settings and ruleset enforcement** (pure API calls to GitHub). This is a more contained, auditable use.
+- **The marketplace action must be forked into the `HSLdevcom` org** before use. The upstream action (`joshjohanning/bulk-github-repository-settings-sync`) is authored by an individual developer, not by GitHub. Forking gives us full control over the code that runs with organisation-wide write permissions and eliminates exposure to upstream supply chain compromise.
+- **All third-party actions (including the forked one) are pinned to an exact commit SHA**, never a mutable tag.
 
 | Concern | Handled by |
 |---|---|
-| Repo settings (merge, auto-merge, delete branch) | Marketplace action |
+| Repo settings (merge, auto-merge, delete branch) | Marketplace action (forked + SHA-pinned) |
 | Branch protection (required reviews, linear history, force push, merge queue, status checks) | Marketplace action (via modern rulesets API) |
 | Security settings (secret scanning, Dependabot, push protection) | Marketplace action |
-| File sync (workflow files, `dependabot.yml`, CODEOWNERS, PR templates) | Marketplace action |
 | Environments | Marketplace action |
+| File sync (workflow files, `dependabot.yml`, CODEOWNERS, PR templates) | **Out of scope** — not trusted to third-party tools |
 | GitHub Actions policies | Custom script |
 | Team and collaborator permissions | Custom script |
 | Shared-workflows migration compliance | Custom script |
@@ -157,9 +166,8 @@ rules:
       dependabot-alerts: true
       dependabot-security-updates: true
       rulesets-file: config/rulesets/default-branch-protection.json
-      dependabot-yml: config/dependabot.yml
-      pull-request-template: config/pull_request_template.md
-      workflow-files: .github/workflows/dependabot-auto-approve.yml
+      # file sync inputs (dependabot-yml, workflow-files, pull-request-template, codeowners)
+      # are intentionally not used — see trust rationale in Implementation Approach
 
   # Per-repo overrides: only specify what differs from the default above
   - selector:
@@ -257,7 +265,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: joshjohanning/github-settings-sync@v2
+      - uses: HSLdevcom/github-settings-sync@<commit-sha>  # fork of joshjohanning/bulk-github-repository-settings-sync
         with:
           github-token: ${{ secrets.GITHUB_SETTINGS_SYNC_TOKEN }}
           owner: HSLdevcom
@@ -320,7 +328,46 @@ docker-base-image:
 
 ---
 
-### 5. Integration into CI/CD
+### 5. Security of the Central Management Repository
+
+Because a single compromised commit to this repo can affect every HSL repository, the central management repo itself must be held to a higher security standard than the services it governs.
+
+#### Repository visibility
+
+Make the repository **private**. This prevents anyone outside the GitHub organisation from opening PRs, browsing the policy configuration, or discovering the scope of write access granted to the GitHub App.
+
+#### CODEOWNERS
+
+A `CODEOWNERS` file lists all InfoDevOps team members. Every file in the repository is owned by the team:
+
+```
+# CODEOWNERS
+* @HSLdevcom/infodevops-team
+```
+
+#### Branch protection on `main`
+
+Configure the following on the `main` branch, with **no bypass actors** — not even org admins:
+
+- Require **2 approving reviews** from different CODEOWNERS before merge
+- Dismiss stale reviews on new push
+- Require last push approval (prevent self-approval of own final commit)
+- Require conversation resolution
+- Require linear history
+- Block force pushes and branch deletion
+- Require all status checks to pass before merge
+
+The "no bypass" constraint is intentional: if the policy governing all repos can be force-merged by one person, the entire governance model is undermined.
+
+#### Additional hardening
+
+- **Restrict who can trigger `workflow_dispatch`**: only team members, not all repo contributors
+- **Audit log**: enable organisation audit log streaming so all pushes and workflow runs on this repo are retained
+- **Secret access**: the GitHub App token used by the workflow is scoped to the minimum permissions needed; it is stored as an organisation secret accessible only to this repo
+
+---
+
+### 6. Integration into CI/CD
 
 The governance workflow runs:
 - on every push to `main` in this repo when `config/` changes → immediate enforcement
