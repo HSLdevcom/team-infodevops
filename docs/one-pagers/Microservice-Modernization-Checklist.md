@@ -306,14 +306,29 @@ access to the HSLdevcom GitHub organization.
   Check `infodevops-docker-base-images` for the current node image tag.
 - [ ] In `.github/workflows`, remove any `actions/setup-node` with hardcoded versions;
       the shared workflow uses `node-version: "lts/*"`.
-- [ ] Update `engines` in `package.json` if set:
+- [ ] Update `engines` in `package.json` if set. The shared workflow pins
+      `node-version: "lts/*"`, which currently resolves to **Node 24** (LTS advances
+      over time). Set the minimum to match the current LTS, not the previous one:
   ```json
-  "engines": { "node": ">=22" }
+  "engines": { "node": ">=24" }
   ```
-- [ ] Run `npm ci && npm run build` locally with Node 22 to verify no incompatibilities.
+- [ ] Regenerate `package-lock.json` with the same Node version the shared workflow
+      uses. A lockfile written by Node 22 is incompatible with `npm ci` on Node 24 and
+      will cause CI failures even when local builds pass:
+  ```sh
+  # switch to the current LTS before regenerating
+  node --version   # confirm you are on Node 24+
+  rm package-lock.json
+  npm install
+  git add package-lock.json
+  ```
+- [ ] Run `npm ci && npm run build` locally with Node LTS (24) to verify no
+      incompatibilities.
 
 #### 3. Replace Dockerfile with two-stage standard pattern
-- [ ] Migrate to a multi-stage Dockerfile that separates build and runtime:
+- [ ] Migrate to a multi-stage Dockerfile that separates build, test, and runtime. The
+      shared workflow targets the stage names `tester` (for `checkAndTestInsideDocker`)
+      and `production` (for the final image) by name — these names are required:
   ```dockerfile
   # syntax=docker/dockerfile:1
   # check=error=true
@@ -325,7 +340,10 @@ access to the HSLdevcom GitHub organization.
   COPY . .
   RUN npm run build
 
-  FROM hsldevcom/infodevops-docker-base-images:<ver>-node
+  FROM build AS tester
+  RUN npm test
+
+  FROM hsldevcom/infodevops-docker-base-images:<ver>-node AS production
   WORKDIR /usr/app
   COPY --from=build /usr/app/dist ./dist
   COPY --from=build /usr/app/node_modules ./node_modules
