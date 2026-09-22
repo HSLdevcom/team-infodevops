@@ -27,7 +27,7 @@ Most common first.
 ## What to do
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 $K -n transitdata <...>
 ```

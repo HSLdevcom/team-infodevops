@@ -19,7 +19,7 @@ The alert names the pod and container. Start there, and look at the **shape** of
 over the last week — it decides what you do next.
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 $K -n transitdata top pods --sort-by=memory | head -15
 $K -n transitdata describe pod <pod> | grep -A6 -i "limits\|last state"

@@ -15,7 +15,7 @@ The alert names the pod. Whatever it does in the pipeline is effectively down wh
 ## What to do
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 # what state is it actually in
 $K -n transitdata get pod <pod>

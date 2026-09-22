@@ -45,7 +45,7 @@ The producer is a service in the `transitdata` namespace; the topic name points 
 ## What to do
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 $K -n transitdata get pods | grep -E "pubtrans|metro-ats|hfp"
 $K -n transitdata logs deploy/<producer> --tail=100

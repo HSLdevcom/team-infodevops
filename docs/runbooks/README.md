@@ -20,11 +20,12 @@ Each runbook follows the same shape:
 |---|---|---|
 | Slack channel | `transitdata-dev-monit` | `azure-transitdata-monitoring` |
 | Grafana | [grafana-202511110445-we](https://grafana-202511110445-we-hecnd9dvgugeaxcj.weu.grafana.azure.com) | [grafana-infosys-prod](https://grafana-infosys-prod-dpbde9bwdscpf8b9.weu.grafana.azure.com) |
-| AKS context | `aks-aksinfosys-dev-001-tunnel` | `aks-aksinfosys-prod-weu-tunnel` |
+| AKS cluster | dev cluster | prod cluster |
 | Namespace | `transitdata` | `transitdata` |
 
-Both clusters are private — use the `-tunnel` kubeconfig contexts. The examples use the prod
-context; swap it for dev when needed.
+Both clusters are private, reached through a bastion tunnel — point `kubectl` at the right cluster
+before running the commands below. The examples target the prod cluster; use the dev cluster for a
+dev alert.
 
 ## Who to contact
 

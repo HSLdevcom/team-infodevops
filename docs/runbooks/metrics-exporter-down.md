@@ -18,7 +18,7 @@ breaks. (Pulsar and Kubernetes alerts come from elsewhere and are unaffected.)
 ## What to do
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 $K -n transitdata get pods -l app=transitdata-metrics-exporter
 $K -n transitdata describe pod -l app=transitdata-metrics-exporter | tail -40

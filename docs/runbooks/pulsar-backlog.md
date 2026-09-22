@@ -39,7 +39,7 @@ fires when the backlog has grown beyond its usual range.
 ## What to do
 
 ```sh
-K="kubectl --context aks-aksinfosys-prod-weu-tunnel"   # dev: aks-aksinfosys-dev-001-tunnel
+K="kubectl"   # point kubectl at the prod cluster (dev: the dev cluster)
 
 $K -n transitdata get pods | grep -i <consumer>
 $K -n transitdata logs deploy/<consumer> --tail=100

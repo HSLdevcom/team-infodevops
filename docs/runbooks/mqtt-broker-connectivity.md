@@ -26,7 +26,7 @@ disappear from Reittiopas and stop displays.
 ## What to do
 
 ```sh
-kubectl --context aks-aksinfosys-prod-weu-tunnel -n transitdata logs \
+kubectl -n transitdata logs \
   -l app=transitdata-metrics-exporter --tail=100 | grep -i -E "connect|disconnect|error"
 ```
 
