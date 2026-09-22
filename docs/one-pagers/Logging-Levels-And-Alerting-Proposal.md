@@ -14,7 +14,7 @@ This proposal defines, for every microservice maintained by Team InfoDevOps:
 - **Which environments collect which levels**, and at which retention tier
 - **The writing rules** that make a log line useful to the person reading it at 03:00
 
-Out of scope, deferred to follow-up proposals: the concrete Prometheus/Grafana deployment topology, dashboard design, distributed tracing, and the alert-routing rota.
+Out of scope, deferred to follow-up proposals: the concrete Prometheus/Grafana deployment topology, dashboard design, distributed tracing, and the alert-routing rota. The *topology* is out of scope; the *dependency* is not — §3 puts every alert on a Prometheus rule, so a scrape-and-evaluate path has to exist before any of the alerting work can start.
 
 ---
 
@@ -113,15 +113,29 @@ Each level is defined by an operational contract and a volume budget. The budget
 
 ### 3. Connecting levels to alerting
 
-**`ERROR` → immediate alert, throttled.** One `ERROR` should be able to page. To make that survivable, alerts carry the **first `n` occurrences** within a window and then suppress the remainder with a count, so a dependency outage produces one actionable notification rather than a flood. This is only viable once `ERROR` volume is brought back inside its budget — do not enable paging before completing the rollout in §7.
+**Alerts are evaluated on Prometheus metrics, never on a log query.** The level a developer chooses still decides who gets woken up — but the signal that reaches the alerting system is a counter, not a search over the log table. Micrometer's [Logback binder](https://docs.micrometer.io/micrometer/reference/reference/logging.html#logging-logback) makes this nearly free: `LogbackMetrics` registers a `TurboFilter` on the `LoggerContext` and exposes **`logback_events_total{level}`**, so every `logger.error(...)` in the fleet becomes a counter increment without anyone instrumenting a single call site.
 
-**`WARN` → rolling count with a deviation threshold.** Track `WARN` count per service over a fixed window (start at **10 minutes**; tune per service) and alert when the count departs materially from its recent norm. Typical `WARN` sources — malformed MQTT source messages, dropped broker connections — are exactly the things where the *rate* is the signal and any individual occurrence is noise.
+The binder counts only events the effective level actually enabled — verified in `MetricsTurboFilter.decide()`, which returns `NEUTRAL` without recording when the event would be filtered out. So the counter measures what was *written*, which is exactly what makes it usable both as an alert signal and as a live check against the §2 budgets.
 
-Prefer a **counter metric per warning category** over parsing log text for these. `messages_rejected_total{reason="malformed"}` is cheaper to alert on, more precise, and does not break when someone rewords the message.
+This splits the two jobs cleanly:
 
-**`INFO` → no alerts, but track the rate.** A step change in `INFO` volume usually means a crash loop or a regression that moved a line into a hot path. Watch it as a health signal on the logging system itself.
+- **The metric triggers.** Cheap, aggregable, alertable, and immune to someone rewording a message.
+- **The log line explains.** It is read *after* the page, by a responder who already knows which service and which level.
 
-**Use local time (`Europe/Helsinki`) for dynamic-threshold alerts.** Our traffic follows the Finnish transit day. With UTC, every DST transition shifts the daily pattern by an hour and dynamic baselines misfire for days afterwards. Note this contradicts the current `Etc/UTC` setting in all 29 `logback.xml` files — **log timestamps should stay UTC** for correlation; it is the *alert evaluation window* that should be local. Keep the two decisions separate and deliberate.
+**`ERROR` → immediate alert, throttled.** `increase(logback_events_total{level="error"}[5m]) > 0` pages. Throttling becomes Alertmanager grouping plus `repeat_interval` rather than an Azure alert-suppression setting, so a dependency outage produces one actionable notification rather than a flood. This is only viable once `ERROR` volume is brought back inside its budget — do not enable paging before completing the rollout in §9.
+
+**`WARN` → rolling count with a deviation threshold.** Alert on `increase(logback_events_total{level="warn"}[10m])` against a per-service threshold (10 minutes is the starting point; tune per service). Typical `WARN` sources — malformed MQTT source messages, dropped broker connections — are exactly the things where the *rate* is the signal and any individual occurrence is noise.
+
+`logback_events_total` carries only a `level` label, which makes it the catch-all, not the precision instrument. Where the *category* of warning matters, keep a dedicated counter — `messages_rejected_total{reason="malformed"}` — and alert on that instead. The level counter says something is wrong; the domain counter says what.
+
+**`INFO` → no alerts, but track the rate.** `rate(logback_events_total{level="info"}[5m])` is a health signal on the fleet itself: a step change usually means a crash loop, or a regression that moved a line into a hot path. It also makes the §2 budgets enforceable — a service whose `INFO` rate tracks its message rate is visibly breaking the *`INFO` must not scale with throughput* rule, on a graph, without anyone reading a log line.
+
+**What this costs us.** Two limits worth stating plainly:
+
+1. **The alert carries no message text.** It says "`transitdata-hfp-parser` emitted 3 `ERROR`s in 5 minutes", not what they said; the responder opens the logs as the next step. That is a fair trade — it is also what stops alert payloads from becoming a second, worse log pipeline — but it puts log *retrieval* on the incident path, so the logs must stay searchable (§8).
+2. **A pod that dies between scrapes loses its last increments.** A counter is only as good as the last scrape. The mitigation is already in §2: unrecoverable failure is `ERROR` **plus a non-zero exit**, and `CrashLoopBackOff` / pod-restart alerts cover that gap independently of anything the process managed to publish.
+
+**Timezone.** With static PromQL thresholds, alert evaluation has no timezone at all and the DST problem disappears. It returns only if we later adopt time-of-day-aware or dynamically-baselined rules — and if we do, evaluate in `Europe/Helsinki`, because our traffic follows the Finnish transit day and a UTC baseline misfires for days after each DST transition. **Log timestamps stay UTC** regardless, for correlation: the `Etc/UTC` setting in all 29 `logback.xml` files is correct and should not be touched.
 
 ### 4. Expose Prometheus metrics — prerequisite for everything else
 
@@ -139,10 +153,19 @@ management:
 
 For plain-Java services, use the Micrometer Prometheus registry with a minimal HTTP server on the existing management port.
 
+**Bind Logback to the registry.** One line makes every log call in the service a metric — this is what §3 alerts on:
+
+```java
+new LogbackMetrics().bindTo(registry);   // io.micrometer.core.instrument.binder.logging
+```
+
+Spring Boot registers this automatically once `micrometer-core` is on the classpath, so `mqtt-pulsar-gateway` gets it as soon as `prometheus` is exposed. For the plain-Java services it belongs beside the registry setup in `transitdata-common`, next to the JVM and process binders. (`Log4j2Metrics` is the equivalent binder should §7 ever take us to Log4j2 — same meter, same alert rules.)
+
 **The baseline every service should publish:**
 
 | Metric | Type | Replaces |
 |---|---|---|
+| `logback_events_total{level}` | counter | log-query-based alert rules — **supplied by the binder above, no code at the call site** |
 | `messages_received_total{source}` | counter | per-message `DEBUG`/`INFO` |
 | `messages_published_total{topic}` | counter | "Message acked", "Mqtt message delivered" |
 | `messages_failed_total{reason}` | counter | repeated parse-failure `WARN`s |
@@ -188,11 +211,19 @@ Treat the Log4j2 migration as a **last resort**, to be evaluated only if §§1�
 
 | Environment | Level collected | Tier | Rationale |
 |---|---|---|---|
-| Development | `INFO` (`DEBUG` on demand) | Basic Logs | No alerting needed; 1/5 the cost |
+| Development | `INFO` (`DEBUG` on demand) | Basic Logs | 1/5 the cost; a human is already looking |
 | Staging | `INFO` | Basic Logs | Same |
-| Production | `INFO` | Analytics Logs | Alerting requires it |
+| Production | `INFO` | Basic Logs | Alerting runs on Prometheus metrics (§3), so the Analytics tier buys nothing we use |
 
-Basic Logs does not support alerting. That is acceptable in dev and stage, where a human is already looking. It is the main lever available for cost, and it becomes viable in dev precisely when `DEBUG`/`INFO` volume has been brought inside budget.
+Basic Logs does not support alert rules. Under §3 that no longer decides anything: nothing alerts on a log query, so the only capability the Analytics tier would buy in production is the ability to write rules we have deliberately chosen not to write. **This is the largest single cost item in the proposal** — production is the highest-volume environment, and Analytics is roughly five times the price of Basic.
+
+What we give up, stated plainly:
+
+- **No log-based alert rules anywhere, including production.** A signal that cannot be expressed as a metric cannot page. In practice that is a feature: it forces the §1 decision rule at the moment the line is written rather than during an incident.
+- **A reduced query surface.** Basic Logs supports a subset of KQL. The queries actually used during incidents must be confirmed to run on that subset *before* production is flipped — that confirmation is item 24, and it gates the move.
+- **Queries are billed per GB scanned.** Basic Logs shifts cost from ingestion to retrieval. That is the right direction for us — we ingest constantly and query rarely — but a wide, unfiltered incident query is no longer free. This is another reason to keep the structured JSON layout from §5: a query filtered on service and level scans a fraction of what a full-text sweep does.
+
+**Order matters.** Dev and stage first (item 23); production last (item 24), once the Prometheus rules from items 20–22 have fired at least once in anger and the incident queries are known to work on the Basic tier.
 
 ### 9. Rollout
 
@@ -200,7 +231,7 @@ Basic Logs does not support alerting. That is acceptable in dev and stage, where
 2. **Fix the top 3–4 offenders.** For each: add the Prometheus metrics from §4, delete the metrics-as-logs lines, move per-message lines to `DEBUG` or remove them, and enforce the `INFO`-independent-of-throughput rule. `transitdata-gtfsrt-full-publisher` is a known starting point.
 3. **Stop and re-measure.** If `DEBUG`/`INFO` volume has dropped enough that development can run on Basic Logs, the cost objective is met — **stop optimizing here.**
 4. **Only then** evaluate Log4j2 `BurstFilter` (§7).
-5. **Then** enable `ERROR` paging and `WARN` rate alerts, once volumes are inside budget and the alerts will not immediately be muted.
+5. **Then** enable `ERROR` paging and `WARN` rate alerts — as Prometheus rules over `logback_events_total` — once volumes are inside budget and the alerts will not immediately be muted. Production moves to Basic Logs at the same point, because nothing depends on the Analytics tier any more.
 
 Steps 1–3 are expected to deliver most of the benefit. Do not begin step 4 before step 3 has been measured.
 
@@ -259,8 +290,10 @@ This turns *"change 34 repositories"* into *"change one library, mechanically to
 ### 11. Open questions
 
 - **`WARN` window length** — 10 minutes is the proposed starting point; per-service tuning may be needed.
-- **Static thresholds vs dynamic baselines for `WARN`.** Dynamic adapts to seasonality but misfires around DST and service changes; static is predictable but needs maintenance. Recommendation: start static per service, move to dynamic only where the traffic pattern justifies it.
-- **Does alerting survive the move to Basic Logs?** If we ultimately want no log-based alerting at all — alerting on metrics instead — production could move to Basic Logs too, and the cost picture changes substantially. This is the largest open decision in this proposal and should be settled before the retention tiers in §8 are treated as final.
+- **Static thresholds vs dynamic baselines for `WARN`.** Dynamic adapts to seasonality but misfires around DST and service changes; static is predictable but needs maintenance. Prometheus has no native dynamic baselining, which settles this in practice: start static per service, and treat a dynamic baseline as a deliberate exception to build, not a default to fall back on.
+- **~~Does alerting survive the move to Basic Logs?~~ — resolved: yes, by not alerting on logs at all.** §3 puts every alert on a Prometheus metric, which removes the reason production needed the Analytics tier (§8). What stays open is *sequencing*, not the decision: production moves only after the metric rules have proven themselves and the incident-time queries are confirmed to run on the Basic tier.
+- **Where the Prometheus rules are evaluated.** Azure Monitor managed Prometheus supports Prometheus rule groups and keeps us inside the existing Azure tenancy, identity model and on-call tooling; a self-hosted Prometheus + Alertmanager gives finer control over grouping, silencing and `repeat_interval`. Either satisfies §3. This is now on the critical path: with no log-based alerting there is no fallback, so the choice has to be made in Phase 5 item 20 rather than deferred.
+- **Scrape interval and reliability.** The interval bounds how quickly an `ERROR` can page, and a scrape gap is now a blind spot rather than an inconvenience. Pair the rules with an `up`/`absent()` alert so a service that stops being scraped is itself an alert.
 - **Who owns the alert rota**, and what the acceptable page rate is. An `ERROR` that pages is only meaningful if someone is on the receiving end.
 
 ---
@@ -276,7 +309,7 @@ Nothing below this line can be enforced until these exist. Items 2–5 are all o
 | # | Item | Where | Type |
 |---|---|---|---|
 | 1 | Measure actual log **bytes** per service in production over a representative week and rank the fleet. Do not rank by statement count — volume comes from a few hot-path lines, so the ranking will not match intuition. | Azure Monitor | Investigation |
-| 2 | Add Micrometer + `micrometer-registry-prometheus`; expose `/metrics` through the existing `HealthServer` | `transitdata-common` | **[X]** |
+| 2 | Add Micrometer + `micrometer-registry-prometheus`; expose `/metrics` through the existing `HealthServer`; bind `LogbackMetrics` (plus the JVM and process binders) to the registry so `logback_events_total{level}` exists fleet-wide | `transitdata-common` | **[X]** |
 | 3 | Add an `IMessageHandler` instrumenting decorator emitting `messages_received_total`, `messages_failed_total`, `message_processing_duration_seconds` | `transitdata-common` | **[X]** |
 | 4 | Instrument `PulsarApplication` producers/consumer for `messages_published_total` and `connection_state` | `transitdata-common` | **[X]** |
 | 5 | Make the canonical `logback.xml` use `${LOG_LEVEL:-info}` and document the inheritance rule | `transitdata-common` | **[X]** |
@@ -304,7 +337,7 @@ The only phase requiring real engineering judgement. Scope to the top 3–4 serv
 | 13 | Move per-message `INFO`/`DEBUG` out of hot paths; enforce *`INFO` must not scale with throughput* | Top offenders | Per repo |
 | 14 | Audit `ERROR` usage — with `ERROR` and `INFO` at near-parity fleet-wide, most `ERROR`s are misclassified `WARN`s | All JVM repos | Per repo |
 | 15 | Fix the 46 string-concatenation log calls across 25 files | 25 repos | Per repo (or item 17) |
-| 16 | **Re-measure.** If dev now fits Basic Logs, stop — do not proceed to Phase 5. | Azure Monitor | Investigation |
+| 16 | **Re-measure.** If dev now fits Basic Logs, the cost objective is met — skip the Log4j2 evaluation (item 25). Items 20–24 still proceed: they are the alerting work and the production tier move, not further volume reduction | Azure Monitor | Investigation |
 
 ### Phase 4 — Prevent regression
 
@@ -318,12 +351,12 @@ The only phase requiring real engineering judgement. Scope to the top 3–4 serv
 
 | # | Item | Where | Type |
 |---|---|---|---|
-| 20 | Define per-service `WARN` rate thresholds and the `ERROR` paging rota | Azure Monitor | Investigation |
-| 21 | Enable throttled `ERROR` paging — **only after** item 16 confirms `ERROR` is inside budget | Azure Monitor | Config |
-| 22 | Set alert evaluation windows to `Europe/Helsinki`; leave log timestamps in UTC | Azure Monitor | Config |
+| 20 | Choose and stand up the rule-evaluation path — Azure Monitor managed Prometheus rule groups or self-hosted Prometheus + Alertmanager — and settle the `ERROR` paging rota | Azure / AKS | Investigation |
+| 21 | Write the `ERROR` rule (`increase(logback_events_total{level="error"}[5m]) > 0`) with Alertmanager grouping and `repeat_interval` for throttling — **only after** item 16 confirms `ERROR` is inside budget | Alerting rules | Config |
+| 22 | Write per-service `WARN` rate rules over `logback_events_total{level="warn"}`, static thresholds to start; add an `up`/`absent()` rule so a service that stops being scraped alerts too | Alerting rules | Config |
 | 23 | Move dev and stage to Basic Logs | Azure Monitor | Config |
-| 24 | Decide whether production alerting can move to metrics entirely, allowing prod onto Basic Logs | Team decision | Investigation |
-| 25 | Evaluate Log4j2 `BurstFilter` — **only if** item 16 shows volume still above target | `transitdata-common` | **[X]** |
+| 24 | Confirm the incident-time KQL queries run on the Basic tier, then move **production** to Basic Logs — the largest single cost saving in this proposal | Azure Monitor | Config |
+| 25 | Evaluate Log4j2 `BurstFilter` — **only if** item 16 shows volume still above target. `Log4j2Metrics` is the drop-in binder equivalent, so the alert rules survive the switch unchanged | `transitdata-common` | **[X]** |
 
 ### Non-JVM follow-ups
 
@@ -349,16 +382,18 @@ The 10 TypeScript and Python services are not reached by any of the above.
 | **`TRACE`** | Local development only |
 | **`FATAL`** | Not available in SLF4J — use `ERROR` + non-zero exit |
 | **Metrics** | Prometheus endpoint per service; hard prerequisite, not optional |
-| **Alert timezone** | `Europe/Helsinki` for evaluation windows; UTC for log timestamps |
+| **Alert signal** | Prometheus metrics only — `logback_events_total{level}` from Micrometer's Logback binder, plus domain counters. Never a log query |
+| **Alert timezone** | None — static PromQL thresholds are timezone-free; `Europe/Helsinki` only if a time-of-day-aware rule is ever added. Log timestamps stay UTC |
 | **Throttling** | Log4j2 `BurstFilter` if needed; Logback `DuplicateMessageFilter` rejected |
-| **Cost** | Basic Logs in dev and stage; Analytics in prod while alerting depends on it |
+| **Cost** | Basic Logs in **every** environment, production included — alerting no longer depends on the Analytics tier |
 | **Delivery** | Cross-cutting via `transitdata-common` — one PR reaches all 24 JVM services |
 | **Not cross-cuttable** | Deleting metrics-as-logs lines, domain metrics, and the 10 non-JVM services |
 
 ## Expected outcomes
 
 - Log spend reduced by removing metrics-as-logs and per-message lines rather than by blunt level suppression
-- `ERROR` restored to a level that can page someone
+- `ERROR` restored to a level that can page someone, on a counter rather than on a log search
+- Production log spend cut to the Basic tier as well, because no alert depends on querying the log table
 - Statistics become graphable and alertable instead of buried in log text
 - Services observable from the inside, rather than inferred by external black-box polling
 - A written rule that makes the level choice obvious at the point of writing the line
